@@ -121,7 +121,4 @@ flutter:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icon/app_icon.png"  # Ruta del icono de 1024x1024 px
-  adaptive_icon_foreground: "assets/icon/foreground.png"  # Opcional para Android 8.0+
-  adaptive_icon_background: "assets/icon/background.png"  # Opcional para Android 8.0+
-
+  image_path: "ios/Runner/raw/app_icon.png"
