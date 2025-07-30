@@ -122,5 +122,5 @@ flutter_icons:
   android: true
   ios: true
   image_path: "ios/Runner/raw/app_icon.png"
-  ios_remove_alpha: true
+  remove_alpha_ios: true
   ios_background_color: "#DC143C"  # Color rojo crimson
