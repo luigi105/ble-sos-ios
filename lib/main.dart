@@ -501,39 +501,7 @@ Future<void> _debugiOSConfiguration() async {
   print("🧪 === FIN DEBUG ===");
 }
 
-
-  // ✅ NUEVO: Configuración BLE específica iOS
-  Future<void> _setupiOSBLE() async {
-    print("🍎 Configurando BLE para iOS...");
-    
-    if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-      print("⚠️ No hay MAC address configurado para iOS");
-      return;
-    }
-    
-    try {
-      // Buscar dispositivo BLE con estrategia iOS
-      await startScanAndConnect();
-    } catch (e) {
-      print("❌ Error configurando BLE iOS: $e");
-    }
-
-    // ✅ Configurar BLE específico para iOS con IOSPlatformManager
-if (BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty) {
-  try {
-    // Usar startScanAndConnect existente pero con configuración iOS optimizada
-    bool success = await startScanAndConnect();
-    if (success) {
-      print("✅ BLE iOS configurado exitosamente");
-    }
-  } catch (e) {
-    print("❌ Error en configuración BLE iOS: $e");
-  }
-}
-
-  }
-
-  Future<void> _setupiOSBLE() async {
+Future<void> _setupiOSBLE() async {
   print("🍎 Configurando BLE para iOS...");
   
   if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
@@ -542,7 +510,6 @@ if (BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty) {
   }
   
   try {
-    // ✅ USAR la función existente pero configurada para iOS
     bool success = await startScanAndConnect();
     if (success) {
       print("✅ BLE iOS configurado exitosamente");
