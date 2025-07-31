@@ -4,6 +4,8 @@ import 'dart:io'; // ✅ IMPORT CRÍTICO para Platform.isIOS
 import 'ble_data.dart';
 import 'coms.dart';
 import 'permission_guide.dart';
+import 'ios_permission_guide.dart';
+
 // ✅ IMPORT PARA iOS (descomentar cuando esté listo)
 // import 'ios_permission_guide.dart';
 
@@ -91,429 +93,403 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: Text(
-          Platform.isIOS ? "🍎 Configuración iOS" : "🤖 Configuración",
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
-        iconTheme: const IconThemeData(color: Colors.white),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    resizeToAvoidBottomInset: true,
+    appBar: AppBar(
+      title: Text(
+        Platform.isIOS ? "🍎 Configuración iOS" : "🤖 Configuración",
+        style: const TextStyle(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ✅ NUEVA SECCIÓN: Información de plataforma
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Platform.isIOS ? Icons.phone_iphone : Icons.android,
-                    color: Platform.isIOS ? Colors.blue : Colors.green,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          Platform.isIOS ? "Configuración iOS" : "Configuración Android",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-                          ),
-                        ),
-                        Text(
-                          Platform.isIOS 
-                            ? "Optimizado para eficiencia de batería y APIs nativas de Apple"
-                            : "Configuración completa con monitoreo continuo y control total",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Platform.isIOS ? Colors.blue.shade600 : Colors.green.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
+      iconTheme: const IconThemeData(color: Colors.white),
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ✅ NUEVA SECCIÓN: Información de plataforma
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
               ),
             ),
-            
-            _buildDivider(),
-            
-            _buildConfigRowImei(),
-            _buildDivider(),
-            
-            // ✅ SECCIÓN MAC ADDRESS - Solo mostrar si conBoton == 1
-            if (BleData.conBoton == 1) ...[
-              _buildConfigRow("MacAddress BLE:", BleData.macAddress, macAddressController, "Ingresar nuevo MacAddress"),
-              _buildSaveButton("Guardar MacAddress", _guardarMacAddress),
-              _buildDivider(),
-            ] else ...[
-              // ✅ MOSTRAR información cuando BLE está deshabilitado
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.bluetooth_disabled, color: Colors.grey.shade600),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "MacAddress BLE: Deshabilitado (solo ubicación GPS)",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildDivider(),
-            ],
-            
-            _buildConfigRow("Teléfono SOS:", BleData.sosNumber, phoneController, "Ingresar nuevo Teléfono SOS"),
-            _buildSaveButton("Actualizar Teléfono SOS", _actualizarTelefonoSOS),
-            _buildDivider(),
-            
-            // ✅ SECCIÓN MEJORADA: Modo de operación con descripciones
-            Text(
-              "Modo de Operación", 
-              style: TextStyle(
-                fontSize: 18, 
-                fontWeight: FontWeight.bold,
-                color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            // Opción 1: Con Bluetooth
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: nuevoValorBoton == 1 
-                    ? (Platform.isIOS ? Colors.blue : Colors.green)
-                    : Colors.grey.shade300,
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                color: nuevoValorBoton == 1 
-                  ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
-                  : Colors.white,
-              ),
-              child: RadioListTile<int>(
-                title: Row(
-                  children: [
-                    Icon(
-                      Icons.bluetooth,
-                      color: nuevoValorBoton == 1 
-                        ? (Platform.isIOS ? Colors.blue : Colors.green)
-                        : Colors.grey,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "Con Botón Bluetooth",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                subtitle: Text(
-                  Platform.isIOS
-                    ? "• Reconexión automática por iOS\n• Batería optimizada\n• Ubicación en cambios significativos"
-                    : "• Monitoreo continuo BLE\n• Reconexión agresiva\n• Ubicación cada 90 segundos",
-                  style: const TextStyle(fontSize: 12),
-                ),
-                value: 1,
-                groupValue: nuevoValorBoton,
-                onChanged: (value) {
-                  setState(() {
-                    nuevoValorBoton = value!;
-                  });
-                },
-                activeColor: Platform.isIOS ? Colors.blue : Colors.green,
-              ),
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Opción 2: Solo ubicación
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: nuevoValorBoton == 2 
-                    ? (Platform.isIOS ? Colors.blue : Colors.green)
-                    : Colors.grey.shade300,
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                color: nuevoValorBoton == 2 
-                  ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
-                  : Colors.white,
-              ),
-              child: RadioListTile<int>(
-                title: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: nuevoValorBoton == 2 
-                        ? (Platform.isIOS ? Colors.blue : Colors.green)
-                        : Colors.grey,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "Solo Ubicación GPS",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                subtitle: Text(
-                  Platform.isIOS
-                    ? "• Sin dispositivo BLE\n• Botón SOS manual en app\n• Máxima eficiencia de batería"
-                    : "• Sin dispositivo BLE\n• Botón SOS manual en app\n• Solo envío de ubicación",
-                  style: const TextStyle(fontSize: 12),
-                ),
-                value: 2,
-                groupValue: nuevoValorBoton,
-                onChanged: (value) {
-                  setState(() {
-                    nuevoValorBoton = value!;
-                  });
-                },
-                activeColor: Platform.isIOS ? Colors.blue : Colors.green,
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            _buildSaveButton("Guardar Modo de Operación", _guardarConfigBotonBluetooth),
-            _buildDivider(),
-            
-            // ✅ SECCIÓN CONFIGURACIONES CON DESCRIPCIONES ESPECÍFICAS
-            Text(
-              "Configuraciones de Emergencia", 
-              style: TextStyle(
-                fontSize: 18, 
-                fontWeight: FontWeight.bold,
-                color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            // Llamado Automático
-            _buildConfigSwitch(
-              title: "Llamado Automático",
-              subtitle: Platform.isIOS 
-                ? "Llamar automáticamente durante los 30 segundos de emergencia iOS"
-                : "Llamar automáticamente al activar SOS",
-              icon: Icons.phone,
-              value: autoCallChecked,
-              onChanged: _actualizarLlamadoAutomatico,
-            ),
-            
-            _buildDivider(),
-            
-            // Sonido SOS
-            _buildConfigSwitch(
-              title: "Sonido de Alerta SOS",
-              subtitle: "Reproducir sonido al activar emergencia",
-              icon: Icons.volume_up,
-              value: sosSoundChecked,
-              onChanged: _actualizarSonidoSos,
-            ),
-            
-            _buildDivider(),
-            
-            // Notificaciones SOS
-            _buildConfigSwitch(
-              title: "Notificación SOS",
-              subtitle: Platform.isIOS
-                ? "Notificaciones críticas de emergencia en iOS"
-                : "Traer app al frente durante SOS",
-              icon: Icons.notification_important,
-              value: sosNotificationChecked,
-              onChanged: _actualizarNotificacionSos,
-            ),
-            
-            _buildDivider(),
-            
-            // Notificaciones de Conexión
-            _buildConfigSwitch(
-              title: "Notificaciones de Estado",
-              subtitle: Platform.isIOS
-                ? "Estado de BLE y ubicación (configurado automáticamente por iOS)"
-                : "Notificaciones de conexión BLE y ubicación",
-              icon: Icons.notifications,
-              value: bleNotificationsChecked,
-              onChanged: _actualizarNotificacionesConexion,
-            ),
-            
-            _buildDivider(),
-            
-            // ✅ SECCIÓN PERMISOS ESPECÍFICA POR PLATAFORMA
-            Text(
-              Platform.isIOS ? "Configuración del Sistema iOS" : "Permisos del Sistema", 
-              style: TextStyle(
-                fontSize: 18, 
-                fontWeight: FontWeight.bold,
-                color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ListTile(
-                leading: Icon(
-                  Platform.isIOS ? Icons.settings_applications : Icons.security,
+            child: Row(
+              children: [
+                Icon(
+                  Platform.isIOS ? Icons.phone_iphone : Icons.android,
                   color: Platform.isIOS ? Colors.blue : Colors.green,
-                  size: 32,
+                  size: 24,
                 ),
-                title: Text(
-                  Platform.isIOS ? "Configuración Específica iOS" : "Permisos del Sistema",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  Platform.isIOS
-                    ? "• Ubicación siempre\n• Bluetooth en background\n• Notificaciones críticas"
-                    : "• Ubicación siempre\n• Bluetooth scan/connect\n• Llamadas telefónicas\n• Optimización de batería",
-                ),
-                trailing: ElevatedButton(
-                  onPressed: () {
-                    // ✅ NAVEGACIÓN CONDICIONAL POR PLATAFORMA
-                    if (Platform.isIOS) {
-                      // TODO: Descomentar cuando ios_permission_guide.dart esté listo
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                      // );
-                      
-                      // Temporalmente mostrar diálogo
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text("🍎 Configuración iOS"),
-                          content: const Text("La pantalla específica de iOS está en desarrollo.\n\nPor ahora, usa la configuración de permisos estándar."),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                                );
-                              },
-                              child: const Text("Ir a Permisos"),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text("Cerrar"),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    side: BorderSide(
-                      color: Platform.isIOS ? Colors.blue : Colors.grey, 
-                      width: 1,
-                    ),
-                    backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: Text(
-                    Platform.isIOS ? "Configurar iOS" : "Configurar",
-                    style: TextStyle(
-                      color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            // ✅ INFORMACIÓN ADICIONAL ESPECÍFICA POR PLATAFORMA
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.info,
-                        color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        Platform.isIOS ? "Optimizaciones iOS:" : "Características Android:",
+                        Platform.isIOS ? "Configuración iOS" : "Configuración Android",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 16,
                           color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+                        ),
+                      ),
+                      Text(
+                        Platform.isIOS 
+                          ? "Optimizado para eficiencia de batería y APIs nativas de Apple"
+                          : "Configuración completa con monitoreo continuo y control total",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Platform.isIOS ? Colors.blue.shade600 : Colors.green.shade600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  if (Platform.isIOS) ...[
-                    const Text("• 🔋 Batería dura 2-3 días vs 8-12 horas"),
-                    const Text("• 🔄 Reconexión BLE automática por Apple"),
-                    const Text("• 📍 Ubicación solo en cambios significativos (>500m)"),
-                    const Text("• 🚨 SOS garantizado 30 segundos de ejecución"),
-                    const Text("• 🛡️ Privacidad optimizada por iOS"),
-                  ] else ...[
-                    const Text("• 🔋 Control total sobre optimizaciones"),
-                    const Text("• 📡 Monitoreo continuo cada 90 segundos"),
-                    const Text("• 🔄 Reconexión agresiva personalizable"),
-                    const Text("• 💓 Sistema heartbeat para supervivencia"),
-                    const Text("• 🎛️ Configuraciones avanzadas disponibles"),
-                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          _buildDivider(),
+          
+          _buildConfigRowImei(),
+          _buildDivider(),
+          
+          // ✅ SECCIÓN MAC ADDRESS - Solo mostrar si conBoton == 1
+          if (BleData.conBoton == 1) ...[
+            _buildConfigRow("MacAddress BLE:", BleData.macAddress, macAddressController, "Ingresar nuevo MacAddress"),
+            _buildSaveButton("Guardar MacAddress", _guardarMacAddress),
+            _buildDivider(),
+          ] else ...[
+            // ✅ MOSTRAR información cuando BLE está deshabilitado
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.bluetooth_disabled, color: Colors.grey.shade600),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "MacAddress BLE: Deshabilitado (solo ubicación GPS)",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
+            _buildDivider(),
           ],
-        ),
+          
+          _buildConfigRow("Teléfono SOS:", BleData.sosNumber, phoneController, "Ingresar nuevo Teléfono SOS"),
+          _buildSaveButton("Actualizar Teléfono SOS", _actualizarTelefonoSOS),
+          _buildDivider(),
+          
+          // ✅ SECCIÓN MEJORADA: Modo de operación con descripciones
+          Text(
+            "Modo de Operación", 
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Opción 1: Con Bluetooth
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: nuevoValorBoton == 1 
+                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: nuevoValorBoton == 1 
+                ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
+                : Colors.white,
+            ),
+            child: RadioListTile<int>(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.bluetooth,
+                    color: nuevoValorBoton == 1 
+                      ? (Platform.isIOS ? Colors.blue : Colors.green)
+                      : Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Con Botón Bluetooth",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              subtitle: Text(
+                Platform.isIOS
+                  ? "• Reconexión automática por iOS\n• Batería optimizada\n• Ubicación en cambios significativos"
+                  : "• Monitoreo continuo BLE\n• Reconexión agresiva\n• Ubicación cada 90 segundos",
+                style: const TextStyle(fontSize: 12),
+              ),
+              value: 1,
+              groupValue: nuevoValorBoton,
+              onChanged: (value) {
+                setState(() {
+                  nuevoValorBoton = value!;
+                });
+              },
+              activeColor: Platform.isIOS ? Colors.blue : Colors.green,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Opción 2: Solo ubicación
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: nuevoValorBoton == 2 
+                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: nuevoValorBoton == 2 
+                ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
+                : Colors.white,
+            ),
+            child: RadioListTile<int>(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    color: nuevoValorBoton == 2 
+                      ? (Platform.isIOS ? Colors.blue : Colors.green)
+                      : Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Solo Ubicación GPS",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              subtitle: Text(
+                Platform.isIOS
+                  ? "• Sin dispositivo BLE\n• Botón SOS manual en app\n• Máxima eficiencia de batería"
+                  : "• Sin dispositivo BLE\n• Botón SOS manual en app\n• Solo envío de ubicación",
+                style: const TextStyle(fontSize: 12),
+              ),
+              value: 2,
+              groupValue: nuevoValorBoton,
+              onChanged: (value) {
+                setState(() {
+                  nuevoValorBoton = value!;
+                });
+              },
+              activeColor: Platform.isIOS ? Colors.blue : Colors.green,
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          _buildSaveButton("Guardar Modo de Operación", _guardarConfigBotonBluetooth),
+          _buildDivider(),
+          
+          // ✅ SECCIÓN CONFIGURACIONES CON DESCRIPCIONES ESPECÍFICAS
+          Text(
+            "Configuraciones de Emergencia", 
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Llamado Automático
+          _buildConfigSwitch(
+            title: "Llamado Automático",
+            subtitle: Platform.isIOS 
+              ? "Llamar automáticamente durante los 30 segundos de emergencia iOS"
+              : "Llamar automáticamente al activar SOS",
+            icon: Icons.phone,
+            value: autoCallChecked,
+            onChanged: _actualizarLlamadoAutomatico,
+          ),
+          
+          _buildDivider(),
+          
+          // Sonido SOS
+          _buildConfigSwitch(
+            title: "Sonido de Alerta SOS",
+            subtitle: "Reproducir sonido al activar emergencia",
+            icon: Icons.volume_up,
+            value: sosSoundChecked,
+            onChanged: _actualizarSonidoSos,
+          ),
+          
+          _buildDivider(),
+          
+          // Notificaciones SOS
+          _buildConfigSwitch(
+            title: "Notificación SOS",
+            subtitle: Platform.isIOS
+              ? "Notificaciones críticas de emergencia en iOS"
+              : "Traer app al frente durante SOS",
+            icon: Icons.notification_important,
+            value: sosNotificationChecked,
+            onChanged: _actualizarNotificacionSos,
+          ),
+          
+          _buildDivider(),
+          
+          // Notificaciones de Conexión
+          _buildConfigSwitch(
+            title: "Notificaciones de Estado",
+            subtitle: Platform.isIOS
+              ? "Estado de BLE y ubicación (configurado automáticamente por iOS)"
+              : "Notificaciones de conexión BLE y ubicación",
+            icon: Icons.notifications,
+            value: bleNotificationsChecked,
+            onChanged: _actualizarNotificacionesConexion,
+          ),
+          
+          _buildDivider(),
+          
+          // ✅ SECCIÓN PERMISOS ESPECÍFICA POR PLATAFORMA
+          Text(
+            Platform.isIOS ? "Configuración del Sistema iOS" : "Permisos del Sistema", 
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListTile(
+              leading: Icon(
+                Platform.isIOS ? Icons.settings_applications : Icons.security,
+                color: Platform.isIOS ? Colors.blue : Colors.green,
+                size: 32,
+              ),
+              title: Text(
+                Platform.isIOS ? "Configuración Específica iOS" : "Permisos del Sistema",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                Platform.isIOS
+                  ? "• Ubicación siempre\n• Bluetooth en background\n• Notificaciones críticas"
+                  : "• Ubicación siempre\n• Bluetooth scan/connect\n• Llamadas telefónicas\n• Optimización de batería",
+              ),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  // ✅ NAVEGACIÓN DIRECTA CORREGIDA
+                  if (Platform.isIOS) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  side: BorderSide(
+                    color: Platform.isIOS ? Colors.blue : Colors.grey, 
+                    width: 1,
+                  ),
+                  backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: Text(
+                  Platform.isIOS ? "Configurar iOS" : "Configurar",
+                  style: TextStyle(
+                    color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // ✅ INFORMACIÓN ADICIONAL ESPECÍFICA POR PLATAFORMA
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info,
+                      color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      Platform.isIOS ? "Optimizaciones iOS:" : "Características Android:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (Platform.isIOS) ...[
+                  const Text("• 🔋 Batería dura 2-3 días vs 8-12 horas"),
+                  const Text("• 🔄 Reconexión BLE automática por Apple"),
+                  const Text("• 📍 Ubicación solo en cambios significativos (>100m)"),
+                  const Text("• 🚨 SOS garantizado 30 segundos de ejecución"),
+                  const Text("• 🛡️ Privacidad optimizada por iOS"),
+                ] else ...[
+                  const Text("• 🔋 Control total sobre optimizaciones"),
+                  const Text("• 📡 Monitoreo continuo cada 90 segundos"),
+                  const Text("• 🔄 Reconexión agresiva personalizable"),
+                  const Text("• 💓 Sistema heartbeat para supervivencia"),
+                  const Text("• 🎛️ Configuraciones avanzadas disponibles"),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildConfigRowImei() {
     return Row(

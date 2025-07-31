@@ -107,7 +107,7 @@ class BleScanPage extends StatefulWidget {
   BleScanPageState createState() => BleScanPageState();
 }
 
-// ✅ Función para solicitar permisos
+
 Future<void> requestPermissions() async {
   if (isRequestingPermissions) {
     print("⚠️ Ya se están solicitando permisos, evitando duplicación");
@@ -115,53 +115,113 @@ Future<void> requestPermissions() async {
   }
   
   isRequestingPermissions = true; 
-  print("⚠️ Solicitando permisos para ${Platform.isIOS ? 'iOS' : 'Android'}...");
+  print("⚠️ Verificando permisos para ${Platform.isIOS ? 'iOS' : 'Android'}...");
 
-  // ✅ PERMISOS ESPECÍFICOS POR PLATAFORMA
-  List<Permission> permissionsToRequest = [];
-  
-  if (Platform.isAndroid) {
-    permissionsToRequest = [
-      Permission.locationAlways,
-      Permission.location,
-      Permission.notification,
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.phone,
-    ];
-  } else if (Platform.isIOS) {
-    permissionsToRequest = [
-      Permission.locationAlways,
-      Permission.locationWhenInUse,
-      Permission.notification,
-      Permission.bluetooth,
-    ];
+  try {
+    if (Platform.isAndroid) {
+      // ✅ ANDROID: Lógica existente
+      List<Permission> permissionsToRequest = [
+        Permission.locationAlways,
+        Permission.location,
+        Permission.notification,
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.phone,
+      ];
+      
+      Map<Permission, PermissionStatus> statuses = await permissionsToRequest.request();
+      
+      print("🔍 Estado de permisos Android:");
+      statuses.forEach((permiso, estado) {
+        String emoji = estado.isGranted ? "✅" : "❌";
+        print("$emoji $permiso -> $estado");
+      });
+      
+    } else if (Platform.isIOS) {
+      // ✅ iOS: VERIFICAR PRIMERO, SOLICITAR SOLO SI ES NECESARIO
+      print("🍎 Verificando permisos iOS existentes...");
+      
+      bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+      bool bluetoothGranted = await Permission.bluetooth.isGranted;
+      bool notificationGranted = await Permission.notification.isGranted;
+      
+      print("📊 Estado actual iOS:");
+      print("📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
+      print("🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
+      print("🔔 Notificaciones: ${notificationGranted ? '✅' : '❌'}");
+      
+      // ✅ SOLICITAR SOLO LOS QUE FALTAN
+      List<Permission> toRequest = [];
+      
+      if (!locationAlwaysGranted) {
+        print("📍 Solicitando ubicación siempre...");
+        // En iOS primero hay que pedir "when in use"
+        await Permission.locationWhenInUse.request();
+        await Permission.locationAlways.request();
+        
+        // Verificar resultado
+        bool granted = await Permission.locationAlways.isGranted;
+        print("📍 Resultado ubicación siempre: ${granted ? '✅' : '❌'}");
+      }
+      
+      if (!bluetoothGranted) {
+        print("🔵 Solicitando Bluetooth...");
+        PermissionStatus bluetoothResult = await Permission.bluetooth.request();
+        print("🔵 Resultado Bluetooth: $bluetoothResult");
+      } else {
+        print("🔵 Bluetooth YA OTORGADO - no solicitar de nuevo");
+      }
+      
+      if (!notificationGranted) {
+        print("🔔 Solicitando notificaciones...");
+        PermissionStatus notifResult = await Permission.notification.request();
+        print("🔔 Resultado notificaciones: $notifResult");
+      }
+    }
+    
+    // ✅ SOLICITAR PERMISOS DE BATERÍA SOLO EN ANDROID
+    if (Platform.isAndroid && !batteryPermissionAlreadyRequested) {
+      print("🔋 Solicitando permisos de batería para Android...");
+      await requestBatteryOptimizationsIfNeeded();
+    }
+    
+  } catch (e) {
+    print("❌ Error durante solicitud de permisos: $e");
   }
-
-  Map<Permission, PermissionStatus> statuses = await permissionsToRequest.request();
-
-  // ✅ SOLICITAR PERMISOS DE BATERÍA SOLO EN ANDROID
-  if (Platform.isAndroid && !batteryPermissionAlreadyRequested) {
-    print("🔋 Solicitando permisos de batería para Android...");
-    await requestBatteryOptimizationsIfNeeded();
-  }
-
-  // Verificar y mostrar en consola los permisos otorgados
-  print("🔍 Estado de permisos DESPUÉS de solicitar:");
-  statuses.forEach((permiso, estado) {
-    String emoji = estado.isGranted ? "✅" : "❌";
-    print("$emoji $permiso -> $estado");
-  });
 
   await Future.delayed(const Duration(seconds: 1)); 
   isRequestingPermissions = false;
   print("✅ Proceso de permisos completado para ${Platform.isIOS ? 'iOS' : 'Android'}.");
 
+  // ✅ VERIFICAR GPS AL FINAL (solo si no está activado)
   bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
   if (!gpsEnabled) {
     print("⚠️ GPS desactivado, solicitando activación...");
     await Geolocator.openLocationSettings();
   }
+}
+
+Future<void> checkPermissionsStatusOnly() async {
+  print("🔍 === VERIFICACIÓN DE ESTADO (sin solicitar) ===");
+  
+  if (Platform.isIOS) {
+    bool locationAlways = await Permission.locationAlways.isGranted;
+    bool bluetooth = await Permission.bluetooth.isGranted;
+    bool notification = await Permission.notification.isGranted;
+    
+    print("📊 Estado iOS:");
+    print("   📍 Ubicación siempre: ${locationAlways ? '✅' : '❌'}");
+    print("   🔵 Bluetooth: ${bluetooth ? '✅' : '❌'}");
+    print("   🔔 Notificaciones: ${notification ? '✅' : '❌'}");
+    
+    if (locationAlways && bluetooth && notification) {
+      print("✅ Todos los permisos iOS están configurados");
+    } else {
+      print("⚠️ Faltan algunos permisos iOS");
+    }
+  }
+  
+  print("🔍 === FIN VERIFICACIÓN ===");
 }
 
 Future<void> verifyPermissionsAfterStartup() async {
@@ -309,19 +369,25 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     }
   }
 
-  // ✅ NUEVO: Inicialización específica iOS
-  Future<void> _initializeiOS() async {
-    print("🍎 Inicializando estrategia iOS...");
-    
-    // Inicializar estados anteriores
-    previousConnectionState = BleData.isConnected;
-    previousLocationConfirmed = BleData.locationConfirmed;
+// ✅ REEMPLAZAR la función _initializeiOS() en main.dart
 
-    locationService.initializeDeviceId().then((_) {
-      print("Device ID inicializado correctamente: ${BleData.deviceId}");
+// ✅ NUEVO: Inicialización específica iOS COMPLETA
+Future<void> _initializeiOS() async {
+  print("🍎 Inicializando estrategia iOS...");
+  
+  // Inicializar estados anteriores
+  previousConnectionState = BleData.isConnected;
+  previousLocationConfirmed = BleData.locationConfirmed;
 
-      if (BleData.conBoton == 1) {
-        // Solo configurar BLE, sin timers ni heartbeats
+  locationService.initializeDeviceId().then((_) {
+    print("Device ID inicializado correctamente: ${BleData.deviceId}");
+
+    if (BleData.conBoton == 1) {
+      // ✅ INICIALIZAR IOSPlatformManager PRIMERO
+      IOSPlatformManager.initialize().then((_) {
+        print("✅ IOSPlatformManager inicializado");
+        
+        // Luego solicitar permisos
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
@@ -331,36 +397,32 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
             if (!locationAlwaysGranted) {
               print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
               if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN CONDICIONAL iOS
-                if (Platform.isIOS) {
-                  // TODO: Descomentar cuando ios_permission_guide.dart esté listo
-                   Navigator.push(
-                     navigatorKey.currentContext!,
-                     MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                   );
-                  print("📱 iOS: Navegación a IOSPermissionGuidePage pendiente");
-                  // Temporalmente usar Android version
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                  );
-                } else {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                  );
-                }
+                // ✅ NAVEGACIÓN DIRECTA A iOS
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
               }
+            } else {
+              print("✅ Permisos iOS configurados correctamente");
             }
           });
           
+          // ✅ CONFIGURAR BLE para conBoton == 1
           _setupiOSBLE();
+          
+          // ✅ SIEMPRE iniciar ubicación
           if (!locationService.isUpdatingLocation) {
+            print("📍 Iniciando servicio de ubicación iOS...");
             locationService.startLocationUpdates();
           }
         });
-      } else {
-        // Solo configurar ubicación significativa
+      });
+    } else {
+      // ✅ MODO 2: Solo ubicación GPS
+      IOSPlatformManager.initialize().then((_) {
+        print("✅ IOSPlatformManager inicializado para modo GPS");
+        
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
@@ -370,48 +432,75 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
             if (!locationAlwaysGranted) {
               print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
               if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN CONDICIONAL iOS
-                if (Platform.isIOS) {
-                  // TODO: Descomentar cuando ios_permission_guide.dart esté listo
-                   Navigator.push(
-                     navigatorKey.currentContext!,
-                     MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                   );
-                  print("📱 iOS: Navegación a IOSPermissionGuidePage pendiente");
-                  // Temporalmente usar Android version
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                  );
-                } else {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                  );
-                }
+                // ✅ NAVEGACIÓN DIRECTA A iOS
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
               }
+            } else {
+              print("✅ Permisos iOS configurados correctamente para modo GPS");
             }
           });
           
+          // ✅ SOLO iniciar ubicación (sin BLE)
           if (!locationService.isUpdatingLocation) {
+            print("📍 Iniciando servicio de ubicación iOS (solo GPS)...");
             locationService.startLocationUpdates();
           }
         });
-      }
-    });
+      });
+    }
+  });
 
-    print("✅ iOS inicializado - Sin timers agresivos");
-    
-    // Actualizar UI periódicamente (esto sí es seguro en iOS)
-    Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_isMounted) {
-        setState(() {
-          sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-          sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-        });
-      }
-    });
-  }
+  print("✅ iOS inicializado con IOSPlatformManager");
+  
+  // ✅ ACTUALIZAR UI periódicamente
+  Timer.periodic(const Duration(seconds: 2), (timer) {
+    if (_isMounted) {
+      setState(() {
+        sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+        sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
+      });
+    }
+  });
+  
+  // ✅ DEBUG para verificar configuración
+  _debugiOSConfiguration();
+}
+
+// ✅ FUNCIÓN DEBUG para iOS
+Future<void> _debugiOSConfiguration() async {
+  print("🧪 === DEBUG CONFIGURACIÓN iOS ===");
+  
+  // Verificar datos guardados
+  print("📋 Datos actuales:");
+  print("   - IMEI: ${BleData.imei}");
+  print("   - MAC Address: ${BleData.macAddress}");
+  print("   - conBoton: ${BleData.conBoton}");
+  print("   - SOS Number: ${BleData.sosNumber}");
+  
+  // Verificar permisos
+  bool locationAlways = await Permission.locationAlways.isGranted;
+  bool bluetooth = await Permission.bluetooth.isGranted;
+  bool notification = await Permission.notification.isGranted;
+  
+  print("📋 Permisos iOS:");
+  print("   - Ubicación siempre: ${locationAlways ? '✅' : '❌'}");
+  print("   - Bluetooth: ${bluetooth ? '✅' : '❌'}");
+  print("   - Notificaciones: ${notification ? '✅' : '❌'}");
+  
+  // Verificar servicios
+  bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
+  BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+  
+  print("📋 Servicios del sistema:");
+  print("   - GPS: ${gpsEnabled ? '✅' : '❌'}");
+  print("   - Bluetooth: $bleState");
+  
+  print("🧪 === FIN DEBUG ===");
+}
+
 
   // ✅ NUEVO: Configuración BLE específica iOS
   Future<void> _setupiOSBLE() async {
@@ -444,99 +533,135 @@ if (BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty) {
 
   }
 
-  // ✅ MANTENER: Inicialización Android existente
-  Future<void> _initializeAndroid() async {
-    print("🤖 Inicializando estrategia Android existente...");
-    
-    _setupLifecycleListener();
-    
-    // Inicializar estados anteriores
-    previousConnectionState = BleData.isConnected;
-    previousLocationConfirmed = BleData.locationConfirmed;
-
-    // Inicializar el último estado de conectividad conocido
-    Connectivity().checkConnectivity().then((result) {
-      _lastConnectivityResult = result;
-      print("🌐 Estado inicial de conectividad: $_lastConnectivityResult");
-    });
-    
-    // Configurar el listener de cambios de conectividad
-    _setupConnectivityListener();
-
-    locationService.initializeDeviceId().then((_) {
-      print("Device ID inicializado correctamente: ${BleData.deviceId}");
-
-      if (BleData.conBoton == 1) {
-        requestPermissions().then((_) {
-          Future.delayed(Duration(seconds: 3), () async {
-            await verifyPermissionsAfterStartup();
-            
-            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-            bool phoneGranted = await Permission.phone.isGranted;
-            
-            if (!locationAlwaysGranted || !phoneGranted) {
-              print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN CONDICIONAL ANDROID
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                );
-              }
-            }
-          });
-          
-          startForegroundTask();
-          startScanAndConnect();
-          if (!locationService.isUpdatingLocation) {
-            locationService.startLocationUpdates();
-          }
-        });
-      } else {
-        requestPermissions().then((_) {
-          Future.delayed(Duration(seconds: 3), () async {
-            await verifyPermissionsAfterStartup();
-            
-            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-            
-            if (!locationAlwaysGranted) {
-              print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN CONDICIONAL ANDROID
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                );
-              }
-            }
-          });
-          
-          startForegroundTask();
-          if (!locationService.isUpdatingLocation) {
-            locationService.startLocationUpdates();
-          }
-        });
-      }
-    });
-
-    // Iniciar monitor del servicio para asegurar que siempre esté activo
-    startServiceMonitor();
-    print("✅ BleScanPageState Android inicializado con listener de lifecycle");
-
-    // Actualizar UI periódicamente
-    Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_isMounted) {
-        setState(() {
-          sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-          sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-        });
-      }
-    });
-
-    // Sistema Heartbeat para supervivencia (solo Android)
-    startHeartbeatSystem();
-    print("✅ BleScanPageState Android inicializado con HEARTBEAT SYSTEM");
+  Future<void> _setupiOSBLE() async {
+  print("🍎 Configurando BLE para iOS...");
+  
+  if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
+    print("⚠️ No hay MAC address configurado para iOS");
+    return;
   }
+  
+  try {
+    // ✅ USAR la función existente pero configurada para iOS
+    bool success = await startScanAndConnect();
+    if (success) {
+      print("✅ BLE iOS configurado exitosamente");
+    } else {
+      print("⚠️ No se pudo conectar BLE inmediatamente, iOS seguirá intentando automáticamente");
+    }
+  } catch (e) {
+    print("❌ Error configurando BLE iOS: $e");
+  }
+}
+
+  // ✅ MANTENER: Inicialización Android existente
+// ✅ MANTENER: Inicialización Android existente COMPLETA
+Future<void> _initializeAndroid() async {
+  print("🤖 Inicializando estrategia Android existente...");
+  
+  _setupLifecycleListener();
+  
+  // Inicializar estados anteriores
+  previousConnectionState = BleData.isConnected;
+  previousLocationConfirmed = BleData.locationConfirmed;
+
+  // Inicializar el último estado de conectividad conocido
+  Connectivity().checkConnectivity().then((result) {
+    _lastConnectivityResult = result;
+    print("🌐 Estado inicial de conectividad: $_lastConnectivityResult");
+  });
+  
+  // Configurar el listener de cambios de conectividad
+  _setupConnectivityListener();
+
+  locationService.initializeDeviceId().then((_) {
+    print("Device ID inicializado correctamente: ${BleData.deviceId}");
+
+    if (BleData.conBoton == 1) {
+      requestPermissions().then((_) {
+        Future.delayed(Duration(seconds: 3), () async {
+          await verifyPermissionsAfterStartup();
+          
+          bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+          bool phoneGranted = await Permission.phone.isGranted;
+          
+          if (!locationAlwaysGranted || !phoneGranted) {
+            print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
+            if (_isMounted && navigatorKey.currentContext != null) {
+              // ✅ NAVEGACIÓN CONDICIONAL CORREGIDA
+              if (Platform.isIOS) {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
+              } else {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
+                );
+              }
+            }
+          }
+        });
+        
+        startForegroundTask();
+        startScanAndConnect();
+        if (!locationService.isUpdatingLocation) {
+          locationService.startLocationUpdates();
+        }
+      });
+    } else {
+      requestPermissions().then((_) {
+        Future.delayed(Duration(seconds: 3), () async {
+          await verifyPermissionsAfterStartup();
+          
+          bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+          
+          if (!locationAlwaysGranted) {
+            print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
+            if (_isMounted && navigatorKey.currentContext != null) {
+              // ✅ NAVEGACIÓN CONDICIONAL CORREGIDA
+              if (Platform.isIOS) {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
+              } else {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
+                );
+              }
+            }
+          }
+        });
+        
+        startForegroundTask();
+        if (!locationService.isUpdatingLocation) {
+          locationService.startLocationUpdates();
+        }
+      });
+    }
+  });
+
+  // Iniciar monitor del servicio para asegurar que siempre esté activo
+  startServiceMonitor();
+  print("✅ BleScanPageState Android inicializado con listener de lifecycle");
+
+  // Actualizar UI periódicamente
+  Timer.periodic(const Duration(seconds: 2), (timer) {
+    if (_isMounted) {
+      setState(() {
+        sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+        sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
+      });
+    }
+  });
+
+  // Sistema Heartbeat para supervivencia (solo Android)
+  startHeartbeatSystem();
+  print("✅ BleScanPageState Android inicializado con HEARTBEAT SYSTEM");
+}
 
   void _setupConnectivityListener() {
     // Solo para Android
@@ -954,100 +1079,125 @@ if (BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty) {
     }
   }
 
-  Future<bool> startScanAndConnect() async {
-    if (isScanning) return false;
-    if (BleData.isConnected) return true;
+Future<bool> startScanAndConnect() async {
+  if (isScanning) return false;
+  if (BleData.isConnected) return true;
 
-    BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
-    if (adapterState != BluetoothAdapterState.on) {
-      print("⚠️ Bluetooth está apagado. Solicitando activación...");
+  // ✅ VERIFICAR que tenemos MAC Address
+  if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
+    print("❌ No hay MAC Address configurado. MAC actual: '${BleData.macAddress}'");
+    return false;
+  }
+
+  BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
+  if (adapterState != BluetoothAdapterState.on) {
+    print("⚠️ Bluetooth está apagado. Estado: $adapterState");
+    
+    if (Platform.isIOS) {
+      print("🍎 iOS: Solicitando activación de Bluetooth...");
+      // En iOS, simplemente informar - el usuario debe activarlo manualmente
+      return false;
+    } else {
+      // Android: lógica existente
       try {
-        if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
-          await FlutterBluePlus.turnOn();
-          await Future.delayed(const Duration(seconds: 2));
-        } else {
-          promptToEnableBluetooth();
-        }
+        await FlutterBluePlus.turnOn();
+        await Future.delayed(const Duration(seconds: 2));
       } catch (e) {
         print("❌ Error al activar Bluetooth: $e");
+        return false;
       }
-      return false;
     }
+  }
 
-    print("Iniciando escaneo...");
-    isScanning = true;
+  print("🔍 Iniciando escaneo para MAC: ${BleData.macAddress}");
+  isScanning = true;
 
-    try {
-      scanResults.clear();
+  try {
+    scanResults.clear();
+    
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+
+    Completer<bool> connectionCompleter = Completer<bool>();
+    StreamSubscription? subscription;
+
+    subscription = FlutterBluePlus.scanResults.listen((results) {
+      List<ScanResult> filteredResults = results
+          .where((result) => result.device.remoteId.toString() == BleData.macAddress)
+          .toList();
       
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 8));
-
-      Completer<bool> connectionCompleter = Completer<bool>();
-
-      StreamSubscription? subscription;
-
-      subscription = FlutterBluePlus.scanResults.listen((results) {
-        List<ScanResult> filteredResults = results
-            .where((result) => result.device.remoteId.toString() == BleData.macAddress)
-            .toList();
+      if (filteredResults.isNotEmpty) {
+        print("✅ Dispositivo encontrado: ${BleData.macAddress}");
         
-        if (filteredResults.isNotEmpty) {
-          if (_isMounted) {
-            setState(() {
-              scanResults = filteredResults;
-            });
-          }
-          
-          FlutterBluePlus.stopScan();
-          isScanning = false;
-          retryScanTimer?.cancel();
-
-          connectToDevice(
-            filteredResults.first.device,
-            navigatorKey.currentContext!,
-            discoverServices,
-            triggerUpdateTimer,
-            activateSos,
-          );
-
-          if (!connectionCompleter.isCompleted) {
-            connectionCompleter.complete(true);
-            BleData.reconnectionAttemptCount = 0;
-            BleData.bleDisconnectionNotificationShown = false;
-            print("✅ Conexión exitosa. Contador de intentos de reconexión reiniciado: 0");
-          }
-
-          subscription?.cancel();
+        if (_isMounted) {
+          setState(() {
+            scanResults = filteredResults;
+          });
         }
-      });
+        
+        FlutterBluePlus.stopScan();
+        isScanning = false;
+        retryScanTimer?.cancel();
 
-      Future.delayed(const Duration(seconds: 15), () {
+        // ✅ CONECTAR usando la función corregida
+        connectToDevice(
+          filteredResults.first.device,
+          navigatorKey.currentContext!,
+          discoverServices,
+          triggerUpdateTimer,
+          activateSos,
+        );
+
         if (!connectionCompleter.isCompleted) {
-          print("⏱️ Timeout de escaneo alcanzado");
-          FlutterBluePlus.stopScan();
-          isScanning = false;
+          connectionCompleter.complete(true);
+          BleData.reconnectionAttemptCount = 0;
+          print("✅ Escaneo exitoso - dispositivo encontrado");
+        }
+
+        subscription?.cancel();
+      }
+    });
+
+    // Timeout de escaneo
+    Future.delayed(const Duration(seconds: 12), () {
+      if (!connectionCompleter.isCompleted) {
+        print("⏱️ Timeout de escaneo alcanzado para MAC: ${BleData.macAddress}");
+        FlutterBluePlus.stopScan();
+        isScanning = false;
+        
+        if (!BleData.isConnected) {
+          print("❌ Dispositivo no encontrado. Programando reintento...");
           
-          if (!BleData.isConnected) {
-            print("Dispositivo no encontrado. Programando reintento...");
+          // ✅ REINTENTO DIFERENTE PARA iOS
+          if (Platform.isIOS) {
+            retryScanTimer?.cancel();
+            retryScanTimer = Timer(const Duration(seconds: 30), () {
+              if (!BleData.isConnected) {
+                print("🔄 iOS: Reintentando escaneo BLE...");
+                startScanAndConnect();
+              }
+            });
+          } else {
+            // Android: lógica existente de reintento
             retryScanTimer?.cancel();
             retryScanTimer = Timer(const Duration(seconds: 20), () {
               if (!BleData.isConnected) {
                 startScanAndConnect();
               }
             });
-            
-            connectionCompleter.complete(false);
           }
+          
+          connectionCompleter.complete(false);
         }
-      });
+      }
+    });
 
-      return connectionCompleter.future;
-    } catch (e) {
-      print("Error durante el escaneo: $e");
-      isScanning = false;
-      return Future.value(false);
-    }
+    return connectionCompleter.future;
+  } catch (e) {
+    print("Error durante el escaneo: $e");
+    isScanning = false;
+    return Future.value(false);
   }
+}
 
   void promptToEnableBluetooth() async {
     print("⚠️ Mostrando alerta para activar Bluetooth...");

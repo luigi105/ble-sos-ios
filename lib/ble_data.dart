@@ -100,24 +100,23 @@ static Future<void> forceCleanForDevelopment() async {
 static Future<void> checkFirstInstallAndCleanIfNeeded() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   
-  print("🔍 === VERIFICACIÓN UNIVERSAL DE INSTALACIÓN ===");
+  print("🔍 === VERIFICACIÓN DE INSTALACIÓN ===");
   
-  // 🎯 ENFOQUE SIMPLE: Preguntar al usuario si es nueva instalación
-  bool shouldTreatAsNewInstall = await shouldForceNewInstallation(prefs);
+  bool shouldClean = await shouldForceNewInstallation(prefs);
   
-  if (shouldTreatAsNewInstall) {
-    print("🗑️ FORZANDO NUEVA INSTALACIÓN - Limpiando datos...");
+  if (shouldClean) {
+    print("🗑️ Limpiando datos de instalación nueva...");
     await performCleanInstallation(prefs);
-    return;
+  } else {
+    print("✅ Conservando datos de instalación existente");
+    await performNormalInstallationCheck(prefs);
   }
   
-  // 📱 VERIFICACIÓN NORMAL para instalaciones legítimas
-  await performNormalInstallationCheck(prefs);
-  
-  print("🔍 === FIN VERIFICACIÓN UNIVERSAL ===");
+  print("🔍 === FIN VERIFICACIÓN ===");
 }
 
 // 🆕 DETECTAR si debemos forzar nueva instalación
+
 static Future<bool> shouldForceNewInstallation(SharedPreferences prefs) async {
   
   // 1️⃣ Si no hay NINGÚN dato, definitivamente es nueva
@@ -127,30 +126,49 @@ static Future<bool> shouldForceNewInstallation(SharedPreferences prefs) async {
     return true;
   }
   
-  // 2️⃣ PATRÓN SOSPECHOSO: Datos completos pero sin historial de uso reciente
-  bool hasCompleteData = prefs.containsKey('conBoton') && 
-                        prefs.containsKey('imei') && 
-                        prefs.containsKey('macAddress') &&
-                        prefs.containsKey('sosNumber');
-  
-  if (hasCompleteData) {
-    // Si tiene datos completos, verificar si el usuario realmente los usó recientemente
-    int? lastUsage = prefs.getInt('app_last_usage_timestamp');
-    
-    if (lastUsage == null) {
-      print("🚨 Datos completos pero sin registro de uso = Posible restore");
-      return true;
-    }
-    
-    // Si el último uso fue hace más de 30 días, sospechoso
-    int daysSinceLastUsage = (DateTime.now().millisecondsSinceEpoch - lastUsage) ~/ (24 * 60 * 60 * 1000);
-    if (daysSinceLastUsage > 30) {
-      print("🚨 Último uso hace $daysSinceLastUsage días = Posible restore");
-      return true;
-    }
+  // 2️⃣ ✅ VERIFICAR MARKER DE INSTALACIÓN ANTES DE CUALQUIER OTRA COSA
+  bool hasInstallMarker = prefs.containsKey('app_install_timestamp');
+  if (!hasInstallMarker) {
+    print("🚨 No hay marker de instalación - Primera vez o restore");
+    // ✅ CREAR MARKER AHORA (no limpiar)
+    int currentTime = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setInt('app_install_timestamp', currentTime);
+    await prefs.setString('app_version_installed', "1.0.4");
+    print("✅ Marker de instalación creado - NO limpiar datos existentes");
+    return false; // ✅ NO LIMPIAR - solo faltaba el marker
   }
   
-  // 3️⃣ Si llegamos aquí, probablemente es instalación legítima
+  // 3️⃣ ✅ SI HAY CONFIGURACIÓN VÁLIDA, CONSERVARLA
+  String? savedImei = prefs.getString('imei');
+  int? conBoton = prefs.getInt('conBoton');
+  
+  bool hasValidConfig = (savedImei != null && savedImei != "UNKNOWN_IMEI" && conBoton != null && conBoton != 0);
+  
+  if (hasValidConfig) {
+    print("✅ Configuración válida encontrada - CONSERVAR datos");
+    print("   - IMEI: $savedImei");
+    print("   - conBoton: $conBoton");
+    
+    // ✅ ACTUALIZAR timestamp de uso
+    int currentTime = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setInt('app_last_usage_timestamp', currentTime);
+    
+    return false; // ✅ NO LIMPIAR
+  }
+  
+  // 4️⃣ ✅ SOLO LIMPIAR si datos están corruptos O incompletos
+  if (savedImei == null || savedImei == "UNKNOWN_IMEI") {
+    print("⚠️ IMEI no configurado - Nueva instalación requerida");
+    return true;
+  }
+  
+  if (conBoton == null || conBoton == 0) {
+    print("⚠️ conBoton no configurado - Nueva instalación requerida");
+    return true;
+  }
+  
+  // 5️⃣ ✅ DEFAULT: CONSERVAR datos
+  print("✅ Instalación legítima - conservando todos los datos");
   return false;
 }
 

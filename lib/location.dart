@@ -260,36 +260,62 @@ Future<void> handleConnectivityIssue(ConnectivityStatus connectivity) async {
     return 0; // Si falla, devolver 0
   } */
 
-  void startLocationUpdates() {
-
-    if (Platform.isIOS) {
-      // iOS usa significant location changes automáticamente
-      // No necesita timer manual - ya configurado en IOSPlatformManager
-      print("📍 iOS: Ubicación manejada automáticamente por IOSPlatformManager");
-      return;
-    }
-
-    if (isUpdatingLocation) return; // ✅ Evita múltiples instancias
-    isUpdatingLocation = true;
-    
-    print("📡 Iniciando actualizaciones de ubicación...");
-    
-    // ✅ Enviar la primera actualización inmediatamente
-    sendLocationOnce();
-
-    _locationTimer = Timer.periodic(const Duration(seconds: 90), (timer) async {
-      print("📡 Enviando ubicación...startLocationUpdates ${DateTime.now()}");
-      bool success = await sendLocationOnce();
-      
-      // Verificar si hubo cambio en el estado de confirmación de ubicación
-if (success != BleData.locationConfirmed) {
-  BleData.setLocationConfirmed(success);  // Ya maneja las notificaciones internamente
+void startLocationUpdates() {
+  if (Platform.isIOS) {
+    // ✅ iOS: Usar IOSPlatformManager
+    _startIOSLocationUpdates();
+  } else {
+    // ✅ Android: Usar lógica existente
+    _startAndroidLocationUpdates();
+  }
 }
 
-      // Añadir reintento más rápido si falla el envío
+
+void _startIOSLocationUpdates() {
+  print("📍 Iniciando ubicación optimizada para iOS (100m)...");
+  
+  if (isUpdatingLocation) return;
+  isUpdatingLocation = true;
+  
+  // ✅ ENVÍO INICIAL
+  print("📡 iOS: Enviando ubicación inicial...");
+  sendLocationOnce();
+  
+  // ✅ TIMER DE RESPALDO más frecuente para geofence de 200m
+  _locationTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+    print("📡 iOS Backup: Enviando ubicación de respaldo cada 5 min...");
+    bool success = await sendLocationOnce();
+    
+    if (success != BleData.locationConfirmed) {
+      BleData.setLocationConfirmed(success);
+    }
+  });
+  
+  print("✅ iOS: Ubicación configurada para geofence de 200m (updates cada 100m)");
+}
+
+// ✅ AÑADIR método para Android (tu lógica existente):
+void _startAndroidLocationUpdates() {
+  if (isUpdatingLocation) return;
+  isUpdatingLocation = true;
+  
+  print("📡 Iniciando actualizaciones de ubicación Android...");
+  
+  // ✅ Enviar la primera actualización inmediatamente
+  sendLocationOnce();
+
+  _locationTimer = Timer.periodic(const Duration(seconds: 90), (timer) async {
+    print("📡 Enviando ubicación Android...startLocationUpdates ${DateTime.now()}");
+    bool success = await sendLocationOnce();
+    
+    // Verificar si hubo cambio en el estado de confirmación de ubicación
+    if (success != BleData.locationConfirmed) {
+      BleData.setLocationConfirmed(success);
+    }
+
+    // Añadir reintento más rápido si falla el envío
     if (!success) {
       print("⚠️ Fallo en envío de ubicación. Programando reintento...");
-      // Reintento en 30 segundos si falló
       Future.delayed(const Duration(seconds: 30), () {
         if (!BleData.locationConfirmed && isUpdatingLocation) {
           print("🔄 Reintentando envío de ubicación después de fallo...");
@@ -297,9 +323,9 @@ if (success != BleData.locationConfirmed) {
         }
       });
     }
+  });
+}
 
-    });
-  }
 
   void stopLocationUpdates() {
 

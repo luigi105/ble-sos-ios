@@ -75,33 +75,34 @@ class IOSPlatformManager {
   }
   
   // ✅ CONFIGURAR CAMBIOS SIGNIFICATIVOS DE UBICACIÓN
-  static Future<void> _setupSignificantLocationChanges() async {
-    print("📍 Configurando seguimiento de ubicación significativa iOS...");
-    
-    // Verificar permisos
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      print("❌ Permisos de ubicación no otorgados para iOS");
-      return;
-    }
-    
-    // Configurar stream de ubicación con filtro de distancia significativa
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.medium, // ✅ Equilibrio entre precisión y batería
-      distanceFilter: 500, // iOS enviará actualización cada 500+ metros
-    );
-    
-    _locationSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen(
-      _handleSignificantLocationChange,
-      onError: (error) {
-        print("❌ Error en stream de ubicación iOS: $error");
-      },
-    );
-    
-    print("✅ Seguimiento de ubicación significativa iOS activado");
+static Future<void> _setupSignificantLocationChanges() async {
+  print("📍 Configurando seguimiento de ubicación cada 100m para iOS...");
+  
+  // Verificar permisos
+  LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    print("❌ Permisos de ubicación no otorgados para iOS");
+    return;
   }
+  
+  // ✅ CONFIGURACIÓN PARA 100 METROS (tu geofence de 200m)
+  const LocationSettings locationSettings = LocationSettings(
+    accuracy: LocationAccuracy.high, // ✅ Alta precisión para geofence de 200m
+    distanceFilter: 100, // ✅ iOS enviará actualización cada 100+ metros
+    timeLimit: Duration(minutes: 5), // ✅ Timeout si no hay cambios
+  );
+  
+  _locationSubscription = Geolocator.getPositionStream(
+    locationSettings: locationSettings,
+  ).listen(
+    _handleSignificantLocationChange,
+    onError: (error) {
+      print("❌ Error en stream de ubicación iOS: $error");
+    },
+  );
+  
+  print("✅ iOS configurado para enviar ubicación cada 100+ metros");
+}
   
   // ✅ MANEJAR CAMBIO SIGNIFICATIVO DE UBICACIÓN
   static Future<void> _handleSignificantLocationChange(Position position) async {
@@ -343,6 +344,38 @@ class IOSPlatformManager {
     // iOS mantendrá BLE y ubicación funcionando automáticamente
     print("✅ Ciclo de vida iOS configurado (manejo automático)");
   }
+
+  static Future<void> setupBLEDevice(BluetoothDevice device) async {
+  print("🔵 Configurando dispositivo BLE específico para iOS...");
+  
+  try {
+    // ✅ CONEXIÓN con autoConnect habilitado
+    await device.connect(
+      autoConnect: true, // iOS manejará reconexión automáticamente
+      timeout: const Duration(seconds: 30),
+    );
+    
+    // ✅ CONFIGURAR listener permanente para estado de conexión
+    device.connectionState.listen((state) {
+      print("🔵 Estado BLE iOS: $state");
+      
+      if (state == BluetoothConnectionState.connected) {
+        print("✅ BLE conectado en iOS");
+        BleData.update(connectionStatus: true);
+        _setupBLENotifications(device); // Configurar notificaciones
+      } else {
+        print("⚠️ BLE desconectado en iOS - iOS intentará reconectar automáticamente");
+        BleData.update(connectionStatus: false);
+      }
+    });
+    
+    print("✅ BLE iOS configurado con auto-reconnect");
+    
+  } catch (e) {
+    print("❌ Error configurando BLE iOS: $e");
+    throw e;
+  }
+}
   
   // ✅ MOSTRAR NOTIFICACIÓN DE ESTADO
   static Future<void> showStatusNotification(String message) async {
