@@ -32,9 +32,13 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
     setState(() => isChecking = false);
   }
 
-  Future<void> requestLocationAlways() async {
-    setState(() => isChecking = true);
+ Future<void> requestLocationAlways() async {
+  setState(() => isChecking = true);
+  
+  try {
+    print("📍 iOS: Solicitando permisos de ubicación...");
     
+    // Mostrar diálogo explicativo
     bool shouldRequest = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -45,7 +49,7 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
           "• 📱 Envía ubicación solo en cambios significativos\n"
           "• 🔋 Optimizado por Apple para batería\n"
           "• 🛡️ Privacidad protegida por iOS\n\n"
-          "iOS solo enviará ubicación cuando te muevas >500 metros."
+          "iOS solo enviará ubicación cuando te muevas >100 metros."
         ),
         actions: [
           TextButton(
@@ -61,17 +65,35 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
     ) ?? false;
 
     if (shouldRequest) {
+      print("📍 Usuario aceptó - solicitando permisos...");
+      
       // En iOS, primero solicitar "when in use", luego "always"
-      await Permission.locationWhenInUse.request();
-      await Permission.locationAlways.request();
+      PermissionStatus whenInUseStatus = await Permission.locationWhenInUse.request();
+      print("📍 When in use result: $whenInUseStatus");
+      
+      if (whenInUseStatus.isGranted) {
+        PermissionStatus alwaysStatus = await Permission.locationAlways.request();
+        print("📍 Always result: $alwaysStatus");
+      }
+      
       await checkPermissions();
+    } else {
+      print("📍 Usuario canceló solicitud de ubicación");
     }
     
-    setState(() => isChecking = false);
+  } catch (e) {
+    print("❌ Error solicitando ubicación: $e");
   }
+  
+  setState(() => isChecking = false);
+}
 
-  Future<void> requestBluetooth() async {
-    setState(() => isChecking = true);
+  
+Future<void> requestBluetooth() async {
+  setState(() => isChecking = true);
+  
+  try {
+    print("🔵 iOS: Solicitando permisos de Bluetooth...");
     
     bool shouldRequest = await showDialog<bool>(
       context: context,
@@ -99,15 +121,28 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
     ) ?? false;
 
     if (shouldRequest) {
-      await Permission.bluetooth.request();
+      print("🔵 Usuario aceptó - solicitando Bluetooth...");
+      PermissionStatus bluetoothStatus = await Permission.bluetooth.request();
+      print("🔵 Bluetooth result: $bluetoothStatus");
+      
       await checkPermissions();
+    } else {
+      print("🔵 Usuario canceló solicitud de Bluetooth");
     }
     
-    setState(() => isChecking = false);
+  } catch (e) {
+    print("❌ Error solicitando Bluetooth: $e");
   }
+  
+  setState(() => isChecking = false);
+}
 
-  Future<void> requestNotifications() async {
-    setState(() => isChecking = true);
+
+ Future<void> requestNotifications() async {
+  setState(() => isChecking = true);
+  
+  try {
+    print("🔔 iOS: Solicitando permisos de notificaciones...");
     
     bool shouldRequest = await showDialog<bool>(
       context: context,
@@ -135,12 +170,21 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
     ) ?? false;
 
     if (shouldRequest) {
-      await Permission.notification.request();
+      print("🔔 Usuario aceptó - solicitando notificaciones...");
+      PermissionStatus notificationStatus = await Permission.notification.request();
+      print("🔔 Notification result: $notificationStatus");
+      
       await checkPermissions();
+    } else {
+      print("🔔 Usuario canceló solicitud de notificaciones");
     }
     
-    setState(() => isChecking = false);
+  } catch (e) {
+    print("❌ Error solicitando notificaciones: $e");
   }
+  
+  setState(() => isChecking = false);
+}
 
   @override
   Widget build(BuildContext context) {

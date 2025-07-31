@@ -119,7 +119,7 @@ Future<void> requestPermissions() async {
 
   try {
     if (Platform.isAndroid) {
-      // ✅ ANDROID: Lógica existente
+      // ✅ ANDROID: Lógica existente (sin cambios)
       List<Permission> permissionsToRequest = [
         Permission.locationAlways,
         Permission.location,
@@ -138,9 +138,10 @@ Future<void> requestPermissions() async {
       });
       
     } else if (Platform.isIOS) {
-      // ✅ iOS: VERIFICAR PRIMERO, SOLICITAR SOLO SI ES NECESARIO
-      print("🍎 Verificando permisos iOS existentes...");
+      // ✅ iOS: VERIFICAR PRIMERO - NO SOLICITAR EN CADA INICIO
+      print("🍎 === VERIFICACIÓN ÚNICA DE PERMISOS iOS ===");
       
+      // Verificar estado actual
       bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
       bool bluetoothGranted = await Permission.bluetooth.isGranted;
       bool notificationGranted = await Permission.notification.isGranted;
@@ -150,32 +151,16 @@ Future<void> requestPermissions() async {
       print("🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
       print("🔔 Notificaciones: ${notificationGranted ? '✅' : '❌'}");
       
-      // ✅ SOLICITAR SOLO LOS QUE FALTAN
-      List<Permission> toRequest = [];
+      // ✅ SOLO SOLICITAR SI REALMENTE FALTAN
+      bool needsLocationPermission = !locationAlwaysGranted;
+      bool needsBluetoothPermission = !bluetoothGranted;
+      bool needsNotificationPermission = !notificationGranted;
       
-      if (!locationAlwaysGranted) {
-        print("📍 Solicitando ubicación siempre...");
-        // En iOS primero hay que pedir "when in use"
-        await Permission.locationWhenInUse.request();
-        await Permission.locationAlways.request();
-        
-        // Verificar resultado
-        bool granted = await Permission.locationAlways.isGranted;
-        print("📍 Resultado ubicación siempre: ${granted ? '✅' : '❌'}");
-      }
-      
-      if (!bluetoothGranted) {
-        print("🔵 Solicitando Bluetooth...");
-        PermissionStatus bluetoothResult = await Permission.bluetooth.request();
-        print("🔵 Resultado Bluetooth: $bluetoothResult");
+      if (needsLocationPermission || needsBluetoothPermission || needsNotificationPermission) {
+        print("⚠️ Faltan permisos - Dirigir a pantalla de configuración");
+        // NO solicitar aquí - dejar que IOSPermissionGuidePage lo haga
       } else {
-        print("🔵 Bluetooth YA OTORGADO - no solicitar de nuevo");
-      }
-      
-      if (!notificationGranted) {
-        print("🔔 Solicitando notificaciones...");
-        PermissionStatus notifResult = await Permission.notification.request();
-        print("🔔 Resultado notificaciones: $notifResult");
+        print("✅ Todos los permisos iOS ya están configurados - No solicitar nada");
       }
     }
     
@@ -186,18 +171,18 @@ Future<void> requestPermissions() async {
     }
     
   } catch (e) {
-    print("❌ Error durante solicitud de permisos: $e");
+    print("❌ Error durante verificación de permisos: $e");
   }
 
   await Future.delayed(const Duration(seconds: 1)); 
   isRequestingPermissions = false;
-  print("✅ Proceso de permisos completado para ${Platform.isIOS ? 'iOS' : 'Android'}.");
+  print("✅ Verificación de permisos completada para ${Platform.isIOS ? 'iOS' : 'Android'}.");
 
   // ✅ VERIFICAR GPS AL FINAL (solo si no está activado)
   bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
   if (!gpsEnabled) {
-    print("⚠️ GPS desactivado, solicitando activación...");
-    await Geolocator.openLocationSettings();
+    print("⚠️ GPS desactivado - NO abrir Settings automáticamente");
+    print("ℹ️ El usuario puede activar GPS desde la pantalla de permisos");
   }
 }
 
@@ -467,6 +452,7 @@ Future<void> _initializeiOS() async {
   
   // ✅ DEBUG para verificar configuración
   _debugiOSConfiguration();
+  _debugBLEConnection();
 }
 
 // ✅ FUNCIÓN DEBUG para iOS
@@ -501,25 +487,84 @@ Future<void> _debugiOSConfiguration() async {
   print("🧪 === FIN DEBUG ===");
 }
 
-Future<void> _setupiOSBLE() async {
-  print("🍎 Configurando BLE para iOS...");
+Future<void> _debugBLEConnection() async {
+  print("🔵 === DEBUG BLE CONNECTION ===");
   
+  // Verificar datos básicos
+  print("📋 Datos BLE:");
+  print("   - MAC Address guardado: '${BleData.macAddress}'");
+  print("   - conBoton: ${BleData.conBoton}");
+  print("   - IMEI: ${BleData.imei}");
+  
+  // Verificar estado Bluetooth
+  try {
+    BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+    print("🔵 Estado Bluetooth: $bleState");
+    
+    if (bleState == BluetoothAdapterState.on) {
+      print("✅ Bluetooth está encendido");
+      
+      // Verificar dispositivos conectados
+      List<BluetoothDevice> connectedDevices = await FlutterBluePlus.connectedDevices;
+      print("📱 Dispositivos conectados: ${connectedDevices.length}");
+      
+      for (var device in connectedDevices) {
+        print("   - ${device.remoteId} (${device.platformName})");
+      }
+      
+      // Verificar si nuestro dispositivo está en la lista
+      bool ourDeviceConnected = connectedDevices.any((device) => 
+        device.remoteId.toString() == BleData.macAddress);
+      print("🎯 Nuestro dispositivo conectado: $ourDeviceConnected");
+      
+    } else {
+      print("❌ Bluetooth está apagado: $bleState");
+    }
+    
+  } catch (e) {
+    print("❌ Error verificando Bluetooth: $e");
+  }
+  
+  print("🔵 === FIN DEBUG BLE ===");
+}
+
+Future<void> _setupiOSBLE() async {
+  print("🍎 === CONFIGURANDO BLE PARA iOS ===");
+  
+  // Verificar MAC Address
   if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-    print("⚠️ No hay MAC address configurado para iOS");
+    print("❌ ERROR: No hay MAC address configurado");
+    print("   MAC actual: '${BleData.macAddress}'");
+    print("   ¿Se ejecutó fetchMacAddress correctamente?");
     return;
   }
+  
+  print("✅ MAC Address válido: ${BleData.macAddress}");
+  
+  // Verificar estado Bluetooth antes de escanear
+  BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+  if (bleState != BluetoothAdapterState.on) {
+    print("❌ Bluetooth no está encendido: $bleState");
+    return;
+  }
+  
+  print("✅ Bluetooth está encendido, iniciando escaneo...");
   
   try {
     bool success = await startScanAndConnect();
     if (success) {
       print("✅ BLE iOS configurado exitosamente");
     } else {
-      print("⚠️ No se pudo conectar BLE inmediatamente, iOS seguirá intentando automáticamente");
+      print("⚠️ No se pudo conectar BLE inmediatamente");
+      print("   iOS seguirá intentando automáticamente con autoConnect");
     }
   } catch (e) {
     print("❌ Error configurando BLE iOS: $e");
   }
+  
+  print("🍎 === FIN CONFIGURACIÓN BLE iOS ===");
 }
+
 
   // ✅ MANTENER: Inicialización Android existente
 // ✅ MANTENER: Inicialización Android existente COMPLETA
