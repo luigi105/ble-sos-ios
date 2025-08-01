@@ -8,6 +8,9 @@ import 'dart:io';
 bool buttonPressed = false;
 Timer? panicTimer;
 
+String _lastBleError = "Ninguno";
+String getLastBleError() => _lastBleError;
+
 void connectToDevice(BluetoothDevice device, BuildContext context, Function discoverServicesCallback, Function triggerUpdateTimerCallback, Function onSosActivated) async {
   try {
     print("🔗 Intento de conexión con: ${device.remoteId}");
@@ -87,7 +90,6 @@ void promptToToggleBluetooth() {
   print("No se puede desactivar Bluetooth automáticamente. Solicita al usuario que lo reinicie manualmente.");
   // Puedes mostrar un diálogo visual
 }
-
 
 
 void discoverServices(BluetoothDevice device, BuildContext context, Function onSosActivated ) async {

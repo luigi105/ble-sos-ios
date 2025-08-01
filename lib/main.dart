@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ✅ IMPORT PARA iOS (descomentar cuando esté listo)
 import 'ios_permission_guide.dart';
 import 'ios_platform_manager.dart';
+import 'connect.dart' as connect_helper;
 
 bool isRequestingPermissions = false;
 bool batteryPermissionAlreadyRequested = false;
@@ -1109,14 +1110,12 @@ Future<bool> startScanAndConnect() async {
   _scanAttempts++;
   
   if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-    _lastBleError = "MAC Address vacío";
     print("❌ No hay MAC Address configurado: '${BleData.macAddress}'");
     return false;
   }
 
   BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
   if (adapterState != BluetoothAdapterState.on) {
-    _lastBleError = "Bluetooth apagado: $adapterState";
     print("⚠️ Bluetooth apagado: $adapterState");
     
     if (Platform.isIOS) {
@@ -1154,7 +1153,6 @@ Future<bool> startScanAndConnect() async {
       
       if (filteredResults.isNotEmpty) {
         deviceFound = true;
-        _lastBleError = "Dispositivo encontrado, intentando conectar";
         print("✅ Dispositivo encontrado: ${BleData.macAddress} (RSSI: ${filteredResults.first.rssi})");
         
         if (_isMounted) {
@@ -1191,10 +1189,6 @@ Future<bool> startScanAndConnect() async {
     
     Future.delayed(timeoutDuration, () {
       if (!connectionCompleter.isCompleted) {
-        if (!deviceFound) {
-          _lastBleError = "Dispositivo ${BleData.macAddress} no encontrado en escaneo #$_scanAttempts";
-        }
-        
         print("⏱️ Timeout escaneo #$_scanAttempts: ${BleData.macAddress}");
         FlutterBluePlus.stopScan();
         isScanning = false;
@@ -1221,7 +1215,6 @@ Future<bool> startScanAndConnect() async {
 
     return connectionCompleter.future;
   } catch (e) {
-    _lastBleError = "Error en escaneo: $e";
     print("❌ Error durante escaneo #$_scanAttempts: $e");
     isScanning = false;
     return false;
@@ -1659,7 +1652,7 @@ Widget _buildPortraitLayout(Size size) {
                           Text("RSSI: ${BleData.rssi} dBm", style: TextStyle(fontSize: 10)),
                           Text("Batería: ${BleData.batteryLevel}%", style: TextStyle(fontSize: 10)),
                           Text("Escaneos: $_scanAttempts", style: TextStyle(fontSize: 10)),
-                          Text("Último error: $_lastBleError", style: TextStyle(fontSize: 9)),
+                          Text("Último error: ${connect_helper.getLastBleError()}", style: TextStyle(fontSize: 9)),
                         ],
                       ),
                     ),
