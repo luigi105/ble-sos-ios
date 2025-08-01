@@ -259,21 +259,33 @@ Future<void> fetchMacAddress(String imei) async {
   }
 
   // Método existente para mostrar notificación SOS
-  Future<void> bringToForeground() async {
-    // Verificar si las notificaciones SOS están habilitadas
-    if (!BleData.sosNotificationEnabled) {
-      print("🔕 Notificaciones SOS desactivadas, no se muestra notificación");
-      return;
+ Future<void> bringToForeground() async {
+  // Verificar si las notificaciones SOS están habilitadas
+  if (!BleData.sosNotificationEnabled) {
+    print("🔕 Notificaciones SOS desactivadas, no se muestra notificación");
+    return;
+  }
+  
+  try {
+    print("🔄 Intentando traer la app al frente...");
+    
+    if (Platform.isAndroid) {
+      // Solo para Android
+      await _foregroundChannel.invokeMethod('bringToForeground');
+      print("✅ App traída al frente correctamente (Android).");
+    } else if (Platform.isIOS) {
+      // Para iOS, usar notificación local en lugar de traer al frente
+      print("🍎 iOS: Mostrando notificación SOS en lugar de traer al frente");
+      // iOS no permite traer apps al frente automáticamente
+      // La notificación SOS ya se envía, no hacer nada más
     }
     
-    try {
-      print("🔄 Intentando traer la app al frente...");
-      await _foregroundChannel.invokeMethod('bringToForeground');
-      print("✅ App traída al frente correctamente.");
-    } on PlatformException catch (e) {
-      print("❌ Error al traer la app al frente: ${e.message}");
-    }
+  } on PlatformException catch (e) {
+    print("❌ Error al traer la app al frente: ${e.message}");
+  } catch (e) {
+    print("❌ Error general: $e");
   }
+}
 
   // 🔹 Función para reproducir sonido de alerta SOS
   Future<void> playSosSound() async {

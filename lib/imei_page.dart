@@ -31,11 +31,9 @@ void onNextPressed() async {
     return;
   }
 
-  // Guardar IMEI en memoria y en SharedPreferences
   await BleData.setImei(imei);
   print("📌 IMEI guardado: $imei");
 
-  // Verificar primero si el IMEI existe en la base de datos
   bool imeiExists = await CommunicationService().checkImei(imei);
   if (!imeiExists) {
     setState(() {
@@ -45,15 +43,22 @@ void onNextPressed() async {
     return;
   }
 
-  // ✅ CRÍTICO: Obtener MacAddress del servidor ANTES de continuar
-  print("🔍 iOS: Obteniendo MAC Address del servidor...");
+  // ✅ MOSTRAR PROGRESO EN UI
+  setState(() {
+    errorMessage = "✅ IMEI válido. Obteniendo MAC Address...";
+  });
+
   await CommunicationService().fetchMacAddress(imei);
   
-  // ✅ VERIFICAR que se haya obtenido el MAC Address
-  await Future.delayed(Duration(seconds: 1)); // Dar tiempo para procesar
-  print("🔍 iOS: MAC Address después de fetch: ${BleData.macAddress}");
+  await Future.delayed(Duration(seconds: 2));
+  
+  // ✅ MOSTRAR RESULTADO EN UI
+  setState(() {
+    errorMessage = "✅ MAC Address obtenido: ${BleData.macAddress}";
+  });
+  
+  await Future.delayed(Duration(seconds: 2));
 
-  // Si todo está bien, ir a la pantalla de BLE Scan
   Navigator.pushAndRemoveUntil(
     context,
     MaterialPageRoute(builder: (context) => const BleScanPage()),

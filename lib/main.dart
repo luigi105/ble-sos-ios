@@ -441,14 +441,15 @@ Future<void> _initializeiOS() async {
   print("✅ iOS inicializado con IOSPlatformManager");
   
   // ✅ ACTUALIZAR UI periódicamente
-  Timer.periodic(const Duration(seconds: 2), (timer) {
-    if (_isMounted) {
-      setState(() {
-        sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-        sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-      });
-    }
-  });
+Timer.periodic(const Duration(seconds: 1), (timer) {
+  if (_isMounted) {
+    setState(() {
+      sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+      sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
+      // El debug container se actualiza automáticamente porque usa BleData.*
+    });
+  }
+});
   
   // ✅ DEBUG para verificar configuración
   _debugiOSConfiguration();
@@ -1569,98 +1570,136 @@ Future<bool> startScanAndConnect() async {
     );
   }
 
-  Widget _buildPortraitLayout(Size size) {
-    return SafeArea(
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.04,
-              vertical: size.height * 0.02,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (BleData.conBoton == 1) ...[
-                  Container(
-                    width: size.width * 0.92,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade50,
+ Widget _buildPortraitLayout(Size size) {
+  return SafeArea(
+    child: Stack(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: size.width * 0.04,
+            vertical: size.height * 0.02,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // ✅ DEBUG PERMANENTE - SIEMPRE VISIBLE
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300, width: 2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "🚨 DEBUG INFO PERMANENTE",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.red.shade700,
+                      ),
                     ),
-                    child: scanResults.isNotEmpty
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: scanResults.length,
-                          itemBuilder: (context, index) {
-                            final result = scanResults[index];
-                            final macAddress = result.device.remoteId.toString();
-                            return _buildDeviceInfoTile(result.device, macAddress);
-                          },
-                        )
-                      : BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty
-                          ? _buildDeviceInfoTile(null, BleData.macAddress)
-                          : const Center(
-                              child: Text(
-                                "Esperando dispositivo...",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    const SizedBox(height: 8),
+                    Text("📱 IMEI: ${BleData.imei}", style: TextStyle(fontSize: 12)),
+                    Text("🔵 MAC: ${BleData.macAddress}", style: TextStyle(fontSize: 12)),
+                    Text("⚙️ conBoton: ${BleData.conBoton}", style: TextStyle(fontSize: 12)),
+                    Text("🔗 BLE Conectado: ${BleData.isConnected ? '✅' : '❌'}", style: TextStyle(fontSize: 12)),
+                    Text("📍 Ubicación OK: ${BleData.locationConfirmed ? '✅' : '❌'}", style: TextStyle(fontSize: 12)),
+                    Text("📞 SOS Number: ${BleData.sosNumber}", style: TextStyle(fontSize: 12)),
+                    Text("🔋 Batería BLE: ${BleData.batteryLevel}%", style: TextStyle(fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text(
+                      "⏰ ${DateTime.now().toString().substring(11, 19)}",
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              
+              if (BleData.conBoton == 1) ...[
+                Container(
+                  width: size.width * 0.92,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade50,
+                  ),
+                  child: scanResults.isNotEmpty
+                    ? ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: scanResults.length,
+                        itemBuilder: (context, index) {
+                          final result = scanResults[index];
+                          final macAddress = result.device.remoteId.toString();
+                          return _buildDeviceInfoTile(result.device, macAddress);
+                        },
+                      )
+                    : BleData.macAddress != "N/A" && BleData.macAddress.isNotEmpty
+                        ? _buildDeviceInfoTile(null, BleData.macAddress)
+                        : const Center(
+                            child: Text(
+                              "Esperando dispositivo...",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                  ),
-                  
-                  if (!BleData.isConnected)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.only(top: 4, bottom: 4),
-                      alignment: Alignment.center,
-                      child: Text(
-                        "Buscando Dispositivo ${BleData.macAddress}",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ),
-                ] else ...[
+                          ),
+                ),
+                
+                if (!BleData.isConnected)
                   Container(
-                    width: size.width * 0.92,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      "Conexión a dispositivo BLE Deshabilitada",
+                    width: double.infinity,
+                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                    alignment: Alignment.center,
+                    child: Text(
+                      "Buscando Dispositivo ${BleData.macAddress}",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: const TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                        color: Colors.black54,
                       ),
                     ),
                   ),
-                ],
+              ] else ...[
+                Container(
+                  width: size.width * 0.92,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    "Conexión a dispositivo BLE Deshabilitada",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
-          
-          Positioned(
-            left: 0,
-            right: 0,
-            top: size.height * 0.45,
-            child: _buildVerticalSosSection(size),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        
+        Positioned(
+          left: 0,
+          right: 0,
+          top: size.height * 0.45,
+          child: _buildVerticalSosSection(size),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildLandscapeLayout(Size size) {
     return SafeArea(
