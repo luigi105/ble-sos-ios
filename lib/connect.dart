@@ -13,6 +13,11 @@ String _lastBleError = "Ninguno";
 
 // ✅ FUNCIÓN para obtener el último error (puede ser llamada desde main.dart)
 String getLastBleError() => _lastBleError;
+Function? _updateSosDebug;
+
+void setSosDebugCallback(Function callback) {
+  _updateSosDebug = callback;
+}
 
 // ✅ REEMPLAZAR connectToDevice con versión híbrida iOS/Android
 void connectToDevice(BluetoothDevice device, BuildContext context, Function discoverServicesCallback, Function triggerUpdateTimerCallback, Function onSosActivated) async {
@@ -251,66 +256,199 @@ void promptToToggleBluetooth() {
 
 void discoverServices(BluetoothDevice device, BuildContext context, Function onSosActivated ) async {
   try {
-    print("Descubriendo servicios del dispositivo: ${device.remoteId}");
+    print("🔍 === DESCUBRIENDO SERVICIOS ===");
+    print("Dispositivo: ${device.remoteId}");
+    print("Nombre: ${device.platformName}");
+    
     List<BluetoothService> services = await device.discoverServices();
-
+    print("📋 Servicios encontrados: ${services.length}");
+    
     for (var service in services) {
-      if (service.uuid.toString() == '6e400001-b5a3-f393-e0a9-e50e24dcca9e') {
+      print("🔧 Servicio: ${service.uuid}");
+      print("   Características: ${service.characteristics.length}");
+      
+      for (var characteristic in service.characteristics) {
+        print("   - ${characteristic.uuid}");
+        print("     Propiedades: ${characteristic.properties}");
+      }
+    }
+
+    // ✅ BUSCAR EL SERVICIO SOS ESPECÍFICO
+    bool sosServiceFound = false;
+    for (var service in services) {
+      String serviceUuid = service.uuid.toString().toLowerCase();
+      print("🔍 Verificando servicio: $serviceUuid");
+      
+      if (serviceUuid == '6e400001-b5a3-f393-e0a9-e50e24dcca9e') {
+        sosServiceFound = true;
+        print("✅ ¡SERVICIO SOS ENCONTRADO!");
+
+        // ✅ NOTIFICAR AL DEBUG
+        if (_updateSosDebug != null) {
+          _updateSosDebug!("servicioEncontrado", true);
+        }
+        
         for (var characteristic in service.characteristics) {
+          String charUuid = characteristic.uuid.toString().toLowerCase();
+          print("🔍 Verificando característica: $charUuid");
+          print("   Puede notificar: ${characteristic.properties.notify}");
+          print("   Puede leer: ${characteristic.properties.read}");
+          print("   Puede escribir: ${characteristic.properties.write}");
+          
+          // ✅ CONFIGURAR NOTIFICACIONES SOS
           if (characteristic.properties.notify) {
-            await characteristic.setNotifyValue(true);
-            characteristic.value.listen((value) {
-              if (value.isNotEmpty) {
-                print("Valor recibido: $value");
+            print("🔔 Configurando notificaciones para: $charUuid");
+            
+            try {
+              await characteristic.setNotifyValue(true);
+              print("✅ Notificaciones activadas exitosamente");
+              
+              // ✅ LISTENER CON DEBUG DETALLADO
+              characteristic.value.listen((value) {
 
-                if (value[4] == 1 && !buttonPressed && panicTimer == null) {
-                  buttonPressed = true;
-                  panicTimer = Timer(const Duration(seconds: 3), () {
-                    if (buttonPressed) {
-                      print("¡Botón SOS presionado! Generando alerta...");
-                      
-                      // 🔊 Reproducir sonido de alerta
-                      if (BleData.sosSoundEnabled) {
-                       CommunicationService().playSosSound();
-                        }
-
-                       // 🔹 Intentamos traer la app al frente
-                      CommunicationService().bringToForeground();  
-
-                       onSosActivated(); // ✅ Llamamos la función para actualizar la UI
-
-                      // 📌 Enviar alerta SOS
-                      CommunicationService().sendSosAlert(
-                    //    BleData.deviceId,           // ID único del celular
-                        device.remoteId.toString(), // MAC address del dispositivo BLE
-                      );
-                      showPanicAlert(context, device.remoteId.toString());
-                      // 📞 Llamada automática si está activada en la configuración
-                      if (BleData.autoCall) {
-                        Future.delayed(const Duration(seconds: 1), () {
-                          CommunicationService().callSosNumber();
-                        });
-                      }
-                    }
-                    panicTimer = null;
-                  });
-                } else if (value[4] == 0) {
-                  // Botón soltado
-                  print("Botón soltado");
-                  if (panicTimer != null && panicTimer!.isActive) {
-                    panicTimer!.cancel();
+                if (_updateSosDebug != null) {
+                    _updateSosDebug!("datosRecibidos", value);
                   }
-                  buttonPressed = false;
-                  panicTimer = null;
+
+                print("📡 === DATOS RECIBIDOS DEL BLE ===");
+                print("Timestamp: ${DateTime.now().toString().substring(11, 19)}");
+                print("Datos raw: $value");
+                print("Longitud: ${value.length} bytes");
+                
+                if (value.isNotEmpty) {
+                  // ✅ MOSTRAR CADA BYTE
+                  for (int i = 0; i < value.length; i++) {
+                    print("  Byte $i: 0x${value[i].toRadixString(16).padLeft(2, '0')} (${value[i]})");
+                  }
+                  
+                  // ✅ VERIFICAR BYTE DE BOTÓN (posición 4)
+                  if (value.length >= 5) {
+                    int buttonByte = value[4];
+                    print("🔘 Byte del botón (posición 4): $buttonByte");
+                    
+                    if (buttonByte == 1) {
+                      if (_updateSosDebug != null) {
+                        _updateSosDebug!("botonPresionado", buttonByte);
+                      }
+                      print("🚨 ¡BOTÓN SOS PRESIONADO! (value[4] = 1)");
+                      print("Estado buttonPressed actual: $buttonPressed");
+                      print("Timer pánico activo: ${panicTimer != null}");
+                      
+                      if (!buttonPressed && panicTimer == null) {
+                        print("✅ Iniciando secuencia SOS...");
+                        buttonPressed = true;
+                        
+                        panicTimer = Timer(const Duration(seconds: 3), () {
+                          print("⏰ Timer de 3 segundos completado");
+                          print("Estado buttonPressed en timer: $buttonPressed");
+                          
+                          if (buttonPressed) {
+                            print("🚨 ¡EJECUTANDO ALERTA SOS!");
+                            
+                            // 🔊 Reproducir sonido de alerta
+                            if (BleData.sosSoundEnabled) {
+                              print("🔊 Reproduciendo sonido SOS...");
+                              CommunicationService().playSosSound();
+                            } else {
+                              print("🔇 Sonido SOS deshabilitado");
+                            }
+
+                            // 🔹 Intentamos traer la app al frente
+                            print("📱 Trayendo app al frente...");
+                            CommunicationService().bringToForeground();  
+
+                            // ✅ Llamar función para actualizar UI
+                            print("🔄 Actualizando UI...");
+                            onSosActivated();
+
+                            // 📌 Enviar alerta SOS
+                            print("📡 Enviando alerta SOS al servidor...");
+                            CommunicationService().sendSosAlert(device.remoteId.toString());
+                            
+                            print("🔔 Mostrando alerta en pantalla...");
+                            showPanicAlert(context, device.remoteId.toString());
+                            
+                            // 📞 Llamada automática si está activada
+                            if (BleData.autoCall) {
+                              print("📞 Llamada automática activada, iniciando llamada en 1 segundo...");
+                              Future.delayed(const Duration(seconds: 1), () {
+                                CommunicationService().callSosNumber();
+                              });
+                            } else {
+                              print("📞 Llamada automática desactivada");
+                            }
+                            
+                            print("✅ Secuencia SOS completada");
+                          } else {
+                            print("⚠️ buttonPressed era false en el timer - SOS cancelado");
+                          }
+                          panicTimer = null;
+                        });
+                        
+                        print("⏳ Timer de 3 segundos iniciado");
+                      } else {
+                        print("⚠️ SOS ya en progreso - ignorando");
+                        print("  buttonPressed: $buttonPressed");
+                        print("  panicTimer activo: ${panicTimer != null}");
+                      }
+                      
+                    } else if (buttonByte == 0) {
+
+                      if (_updateSosDebug != null) {
+                        _updateSosDebug!("botonSoltado", buttonByte);
+                      }
+
+                      print("🔘 Botón soltado (value[4] = 0)");
+                      
+                      if (panicTimer != null && panicTimer!.isActive) {
+                        print("❌ Cancelando timer SOS (botón soltado)");
+                        panicTimer!.cancel();
+                        panicTimer = null;
+                      }
+                      
+                      if (buttonPressed) {
+                        print("🔄 Reseteando estado buttonPressed");
+                        buttonPressed = false;
+                      }
+                      
+                    } else {
+                      print("🔘 Valor de botón desconocido: $buttonByte");
+                    }
+                  } else {
+                    print("⚠️ Datos muy cortos (${value.length} bytes), esperaba al menos 5");
+                  }
+                  
+                } else {
+                  print("⚠️ Datos vacíos recibidos");
                 }
-              }
-            });
+                
+                print("📡 === FIN DATOS BLE ===");
+              }, onError: (error) {
+                print("❌ Error en listener de notificaciones: $error");
+              });
+              
+            } catch (e) {
+              print("❌ Error configurando notificaciones: $e");
+            }
+          } else {
+            print("⚠️ Característica no soporta notificaciones");
           }
         }
       }
     }
+    
+    if (!sosServiceFound) {
+      print("❌ SERVICIO SOS NO ENCONTRADO");
+      print("Servicios disponibles:");
+      for (var service in services) {
+        print("  - ${service.uuid}");
+      }
+    }
+    
+    print("🔍 === FIN DESCUBRIMIENTO DE SERVICIOS ===");
+    
   } catch (e) {
-    print("Error en discoverServices: $e");
+    print("❌ Error en discoverServices: $e");
   }
 }
 

@@ -353,6 +353,12 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   bool _targetDeviceFound = false;
   String _scanDetails = "Esperando...";
 
+    String _lastBleData = "Sin datos";
+  String _buttonStatus = "Sin estado";
+  bool _sosServiceFound = false;
+  int _dataPacketsReceived = 0;
+  String _lastButtonAction = "Ninguna";
+
   @override
   void initState() {
     super.initState();
@@ -365,7 +371,35 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     } else {
       _initializeAndroid();
     }
-  }
+
+      connect_helper.setSosDebugCallback((String action, dynamic data) {
+    if (!mounted) return;
+    
+    setState(() {
+      switch (action) {
+        case "servicioEncontrado":
+          _sosServiceFound = data as bool;
+          break;
+        case "datosRecibidos":
+          List<int> rawData = data as List<int>;
+          _dataPacketsReceived++;
+          _lastBleData = rawData.toString();
+          if (rawData.length >= 5) {
+            _buttonStatus = "Byte[4] = ${rawData[4]}";
+          }
+          break;
+        case "botonPresionado":
+          _lastButtonAction = "Presionado (${DateTime.now().toString().substring(11, 19)})";
+          break;
+        case "botonSoltado":
+          _lastButtonAction = "Soltado (${DateTime.now().toString().substring(11, 19)})";
+          break;
+      }
+    });
+  });
+}
+
+  
 
 // ✅ REEMPLAZAR la función _initializeiOS() en main.dart
 
@@ -1823,7 +1857,31 @@ Widget _buildPortraitLayout(Size size) {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
+                    // ✅ SECCIÓN 5: ESTADO DEL BOTÓN SOS
+                    Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: _sosServiceFound ? Colors.teal.shade50 : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: _sosServiceFound ? Colors.teal.shade200 : Colors.red.shade200
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("🚨 BOTÓN SOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                            Text("Servicio SOS: ${_sosServiceFound ? '✅ OK' : '❌ NO'}", style: TextStyle(fontSize: 10)),
+                            Text("Datos recibidos: $_dataPacketsReceived", style: TextStyle(fontSize: 10)),
+                            Text("Estado botón: $_buttonStatus", style: TextStyle(fontSize: 10)),
+                            Text("Última acción: $_lastButtonAction", style: TextStyle(fontSize: 9)),
+                            Text("Últimos datos: $_lastBleData", style: TextStyle(fontSize: 8)),
+                          ],
+                        ),
+                      ),
+
+
                     
                     Text(
                       "⏰ ${DateTime.now().toString().substring(11, 19)} | $_scanDetails",
