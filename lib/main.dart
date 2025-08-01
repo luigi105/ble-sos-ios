@@ -1091,44 +1091,37 @@ Future<void> _initializeAndroid() async {
       print("⚠️ Error verificando permisos: $e");
     }
   }
-
 Future<bool> startScanAndConnect() async {
   if (isScanning) return false;
   if (BleData.isConnected) return true;
 
-  // ✅ VERIFICAR que tenemos MAC Address
   if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-    print("❌ No hay MAC Address configurado. MAC actual: '${BleData.macAddress}'");
+    print("❌ No hay MAC Address configurado: '${BleData.macAddress}'");
     return false;
   }
 
   BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
   if (adapterState != BluetoothAdapterState.on) {
-    print("⚠️ Bluetooth está apagado. Estado: $adapterState");
+    print("⚠️ Bluetooth apagado: $adapterState");
     
     if (Platform.isIOS) {
-      print("🍎 iOS: Solicitando activación de Bluetooth...");
-      // En iOS, simplemente informar - el usuario debe activarlo manualmente
+      print("🍎 iOS: Usuario debe activar Bluetooth manualmente");
       return false;
-    } else {
-      // Android: lógica existente
-      try {
-        await FlutterBluePlus.turnOn();
-        await Future.delayed(const Duration(seconds: 2));
-      } catch (e) {
-        print("❌ Error al activar Bluetooth: $e");
-        return false;
-      }
     }
   }
 
-  print("🔍 Iniciando escaneo para MAC: ${BleData.macAddress}");
+  print("🔍 Iniciando escaneo para: ${BleData.macAddress}");
   isScanning = true;
 
   try {
     scanResults.clear();
     
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+    // ✅ ESCANEO MÁS LARGO para iOS
+    Duration scanTimeout = Platform.isIOS 
+        ? const Duration(seconds: 15) 
+        : const Duration(seconds: 8);
+    
+    await FlutterBluePlus.startScan(timeout: scanTimeout);
 
     Completer<bool> connectionCompleter = Completer<bool>();
     StreamSubscription? subscription;
@@ -1140,6 +1133,7 @@ Future<bool> startScanAndConnect() async {
       
       if (filteredResults.isNotEmpty) {
         print("✅ Dispositivo encontrado: ${BleData.macAddress}");
+        print("🔍 RSSI: ${filteredResults.first.rssi}");
         
         if (_isMounted) {
           setState(() {
@@ -1151,7 +1145,7 @@ Future<bool> startScanAndConnect() async {
         isScanning = false;
         retryScanTimer?.cancel();
 
-        // ✅ CONECTAR usando la función corregida
+        // ✅ CONECTAR inmediatamente
         connectToDevice(
           filteredResults.first.device,
           navigatorKey.currentContext!,
@@ -1163,41 +1157,39 @@ Future<bool> startScanAndConnect() async {
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.complete(true);
           BleData.reconnectionAttemptCount = 0;
-          print("✅ Escaneo exitoso - dispositivo encontrado");
+          print("✅ Dispositivo encontrado y conexión iniciada");
         }
 
         subscription?.cancel();
       }
     });
 
-    // Timeout de escaneo
-    Future.delayed(const Duration(seconds: 12), () {
+    // ✅ TIMEOUT diferente para iOS
+    Duration timeoutDuration = Platform.isIOS 
+        ? const Duration(seconds: 20) 
+        : const Duration(seconds: 12);
+    
+    Future.delayed(timeoutDuration, () {
       if (!connectionCompleter.isCompleted) {
-        print("⏱️ Timeout de escaneo alcanzado para MAC: ${BleData.macAddress}");
+        print("⏱️ Timeout de escaneo: ${BleData.macAddress}");
         FlutterBluePlus.stopScan();
         isScanning = false;
         
         if (!BleData.isConnected) {
-          print("❌ Dispositivo no encontrado. Programando reintento...");
+          print("❌ Dispositivo no encontrado: ${BleData.macAddress}");
           
-          // ✅ REINTENTO DIFERENTE PARA iOS
-          if (Platform.isIOS) {
-            retryScanTimer?.cancel();
-            retryScanTimer = Timer(const Duration(seconds: 30), () {
-              if (!BleData.isConnected) {
-                print("🔄 iOS: Reintentando escaneo BLE...");
-                startScanAndConnect();
-              }
-            });
-          } else {
-            // Android: lógica existente de reintento
-            retryScanTimer?.cancel();
-            retryScanTimer = Timer(const Duration(seconds: 20), () {
-              if (!BleData.isConnected) {
-                startScanAndConnect();
-              }
-            });
-          }
+          // ✅ REINTENTO específico para iOS
+          Duration retryDelay = Platform.isIOS 
+              ? const Duration(seconds: 45) 
+              : const Duration(seconds: 20);
+          
+          retryScanTimer?.cancel();
+          retryScanTimer = Timer(retryDelay, () {
+            if (!BleData.isConnected) {
+              print("🔄 Reintentando escaneo...");
+              startScanAndConnect();
+            }
+          });
           
           connectionCompleter.complete(false);
         }
@@ -1206,9 +1198,9 @@ Future<bool> startScanAndConnect() async {
 
     return connectionCompleter.future;
   } catch (e) {
-    print("Error durante el escaneo: $e");
+    print("❌ Error durante escaneo: $e");
     isScanning = false;
-    return Future.value(false);
+    return false;
   }
 }
 

@@ -32,57 +32,90 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
     setState(() => isChecking = false);
   }
 
- Future<void> requestLocationAlways() async {
+Future<void> requestLocationAlways() async {
   setState(() => isChecking = true);
   
   try {
-    print("📍 iOS: Solicitando permisos de ubicación...");
+    print("📍 iOS: Verificando permisos de ubicación...");
     
-    // Mostrar diálogo explicativo
-    bool shouldRequest = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("📍 Ubicación Siempre"),
-        content: const Text(
-          "Para iOS, necesitamos acceso 'Siempre' a ubicación:\n\n"
-          "• 🚨 Funciona para emergencias 24/7\n"
-          "• 📱 Envía ubicación solo en cambios significativos\n"
-          "• 🔋 Optimizado por Apple para batería\n"
-          "• 🛡️ Privacidad protegida por iOS\n\n"
-          "iOS solo enviará ubicación cuando te muevas >100 metros."
+    PermissionStatus currentStatus = await Permission.locationAlways.status;
+    print("📍 Estado actual: $currentStatus");
+    
+    if (currentStatus.isDenied) {
+      // Primera vez - intentar solicitar
+      bool shouldRequest = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("📍 Configurar Ubicación"),
+          content: const Text(
+            "Para emergencias 24/7, necesitamos ubicación 'Siempre'.\n\n"
+            "1. Presiona 'Ir a Settings'\n"
+            "2. Busca esta app en la lista\n"
+            "3. Selecciona 'Ubicación'\n"
+            "4. Elige 'Siempre'\n\n"
+            "¿Quieres ir a Settings ahora?"
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Más tarde"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Ir a Settings", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Más tarde"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Configurar", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    ) ?? false;
+      ) ?? false;
 
-    if (shouldRequest) {
-      print("📍 Usuario aceptó - solicitando permisos...");
-      
-      // En iOS, primero solicitar "when in use", luego "always"
-      PermissionStatus whenInUseStatus = await Permission.locationWhenInUse.request();
-      print("📍 When in use result: $whenInUseStatus");
-      
-      if (whenInUseStatus.isGranted) {
-        PermissionStatus alwaysStatus = await Permission.locationAlways.request();
-        print("📍 Always result: $alwaysStatus");
+      if (shouldRequest) {
+        // Intentar solicitar primero
+        await Permission.locationWhenInUse.request();
+        await Permission.locationAlways.request();
+        
+        // Si sigue denegado, ir a Settings
+        PermissionStatus newStatus = await Permission.locationAlways.status;
+        if (!newStatus.isGranted) {
+          await openAppSettings();
+        }
       }
-      
-      await checkPermissions();
-    } else {
-      print("📍 Usuario canceló solicitud de ubicación");
+    } else if (currentStatus.isPermanentlyDenied) {
+      // Ya denegado permanentemente - ir directo a Settings
+      bool shouldOpenSettings = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("📍 Ubicación Denegada"),
+          content: const Text(
+            "Los permisos están denegados.\n\n"
+            "Para habilitarlos:\n"
+            "1. Ve a Settings del iPad\n"
+            "2. Busca esta app\n"
+            "3. Toca 'Ubicación'\n"
+            "4. Selecciona 'Siempre'\n\n"
+            "¿Abrir Settings ahora?"
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Más tarde"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Abrir Settings", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ) ?? false;
+
+      if (shouldOpenSettings) {
+        await openAppSettings();
+      }
     }
     
+    await checkPermissions();
+    
   } catch (e) {
-    print("❌ Error solicitando ubicación: $e");
+    print("❌ Error con permisos de ubicación: $e");
   }
   
   setState(() => isChecking = false);
@@ -93,19 +126,17 @@ Future<void> requestBluetooth() async {
   setState(() => isChecking = true);
   
   try {
-    print("🔵 iOS: Solicitando permisos de Bluetooth...");
-    
-    bool shouldRequest = await showDialog<bool>(
+    bool shouldOpenSettings = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("🔵 Bluetooth"),
+        title: const Text("🔵 Configurar Bluetooth"),
         content: const Text(
-          "Para iOS, Bluetooth es esencial:\n\n"
-          "• 🔗 Conexión automática con dispositivo SOS\n"
-          "• 🔄 iOS maneja reconexión automáticamente\n"
-          "• ⏰ Funciona incluso con app cerrada\n"
-          "• 🚨 Respuesta inmediata a botón de pánico\n\n"
-          "iOS garantiza funcionamiento en background."
+          "Para conectar con tu dispositivo SOS:\n\n"
+          "1. Ve a Settings del iPad\n"
+          "2. Busca 'Privacidad y Seguridad'\n"
+          "3. Busca esta app en la lista\n"
+          "4. Activa 'Bluetooth'\n\n"
+          "¿Abrir Settings ahora?"
         ),
         actions: [
           TextButton(
@@ -114,24 +145,20 @@ Future<void> requestBluetooth() async {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Configurar", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Abrir Settings", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     ) ?? false;
 
-    if (shouldRequest) {
-      print("🔵 Usuario aceptó - solicitando Bluetooth...");
-      PermissionStatus bluetoothStatus = await Permission.bluetooth.request();
-      print("🔵 Bluetooth result: $bluetoothStatus");
-      
-      await checkPermissions();
-    } else {
-      print("🔵 Usuario canceló solicitud de Bluetooth");
+    if (shouldOpenSettings) {
+      await openAppSettings();
     }
     
+    await checkPermissions();
+    
   } catch (e) {
-    print("❌ Error solicitando Bluetooth: $e");
+    print("❌ Error con permisos de Bluetooth: $e");
   }
   
   setState(() => isChecking = false);
@@ -142,19 +169,17 @@ Future<void> requestBluetooth() async {
   setState(() => isChecking = true);
   
   try {
-    print("🔔 iOS: Solicitando permisos de notificaciones...");
-    
-    bool shouldRequest = await showDialog<bool>(
+    bool shouldOpenSettings = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("🔔 Notificaciones"),
+        title: const Text("🔔 Configurar Notificaciones"),
         content: const Text(
-          "Para emergencias críticas:\n\n"
-          "• 🚨 Alertas SOS de alta prioridad\n"
-          "• 📍 Confirmación de ubicación enviada\n"
-          "• 🔵 Estado de conexión BLE\n"
-          "• ⚠️ Notificaciones de emergencia\n\n"
-          "Configuradas como 'Críticas' en iOS."
+          "Para alertas de emergencia:\n\n"
+          "1. Ve a Settings del iPad\n"
+          "2. Busca 'Notificaciones'\n"
+          "3. Busca esta app en la lista\n"
+          "4. Activa 'Permitir notificaciones'\n\n"
+          "¿Abrir Settings ahora?"
         ),
         actions: [
           TextButton(
@@ -163,24 +188,20 @@ Future<void> requestBluetooth() async {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Configurar", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Abrir Settings", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     ) ?? false;
 
-    if (shouldRequest) {
-      print("🔔 Usuario aceptó - solicitando notificaciones...");
-      PermissionStatus notificationStatus = await Permission.notification.request();
-      print("🔔 Notification result: $notificationStatus");
-      
-      await checkPermissions();
-    } else {
-      print("🔔 Usuario canceló solicitud de notificaciones");
+    if (shouldOpenSettings) {
+      await openAppSettings();
     }
     
+    await checkPermissions();
+    
   } catch (e) {
-    print("❌ Error solicitando notificaciones: $e");
+    print("❌ Error con permisos de notificaciones: $e");
   }
   
   setState(() => isChecking = false);
