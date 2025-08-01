@@ -10,94 +10,75 @@ Timer? panicTimer;
 
 void connectToDevice(BluetoothDevice device, BuildContext context, Function discoverServicesCallback, Function triggerUpdateTimerCallback, Function onSosActivated) async {
   try {
-    print("🔗 Intentando conectar con: ${device.remoteId}");
+    print("🔗 Intento de conexión con: ${device.remoteId}");
 
     if (Platform.isIOS) {
-      print("🍎 === CONEXIÓN BLE ESPECÍFICA PARA iOS ===");
+      print("🍎 === CONEXIÓN BLE iOS ===");
       
       try {
-        // ✅ iOS: Estrategia más agresiva
-        print("🔵 iOS: Conectando con autoConnect y timeout extendido...");
-        
         await device.connect(
           autoConnect: true,
-          timeout: const Duration(seconds: 45), // ✅ TIMEOUT MÁS LARGO para iOS
+          timeout: const Duration(seconds: 45),
         );
         
+        _lastBleError = "Conexión exitosa iOS";
         print("✅ iOS: Conexión inicial exitosa");
         
-        // ✅ VERIFICAR estado inmediatamente
         BluetoothConnectionState currentState = await device.connectionState.first;
-        print("🔍 iOS: Estado después de conectar: $currentState");
+        print("🔍 iOS: Estado: $currentState");
         
         if (currentState == BluetoothConnectionState.connected) {
-          print("✅ iOS: Confirmado - dispositivo conectado");
-          
           BleData.update(
             newMacAddress: device.remoteId.toString(),
             connectionStatus: true,
           );
           
-          // ✅ INMEDIATAMENTE descubrir servicios
           await Future.delayed(Duration(seconds: 1));
           discoverServicesCallback(device, context, onSosActivated);
           triggerUpdateTimerCallback();
-          
-        } else {
-          print("⚠️ iOS: Estado inesperado después de conectar: $currentState");
         }
         
       } catch (e) {
-        print("❌ iOS: Error en conexión: $e");
+        _lastBleError = "Error conexión iOS: $e";
+        print("❌ iOS: Error conexión: $e");
         
-        // ✅ RETRY específico para iOS
-        print("🔄 iOS: Intentando reconexión inmediata...");
         try {
           await Future.delayed(Duration(seconds: 2));
           await device.connect(
             autoConnect: true,
             timeout: const Duration(seconds: 30),
           );
+          _lastBleError = "Reconexión exitosa";
           print("✅ iOS: Reconexión exitosa");
         } catch (retryError) {
+          _lastBleError = "Falló reconexión: $retryError";
           print("❌ iOS: Falló reconexión: $retryError");
         }
       }
       
-      // ✅ CONFIGURAR listener permanente para iOS
+      // Listener de estado
       device.connectionState.listen((state) {
-        print("🔵 iOS BLE Estado cambió a: $state");
+        print("🔵 iOS Estado: $state");
         
         if (state == BluetoothConnectionState.connected) {
-          print("✅ iOS: BLE conectado - actualizando estado");
+          _lastBleError = "Conectado y funcionando";
           BleData.update(
             newMacAddress: device.remoteId.toString(),
             connectionStatus: true,
           );
-          BleData.saveConnectionState(true);
-          
-          // Re-configurar servicios si es necesario
-          discoverServicesCallback(device, context, onSosActivated);
-          
-        } else if (state == BluetoothConnectionState.disconnected) {
-          print("⚠️ iOS: BLE desconectado - autoConnect manejará reconexión");
+        } else {
+          _lastBleError = "Desconectado: $state";
           BleData.update(
             newMacAddress: device.remoteId.toString(),
             connectionStatus: false,
           );
-          BleData.saveConnectionState(false);
-          
-          // iOS con autoConnect intentará reconectar automáticamente
         }
       });
-      
-    } else {
-      // Android: código existente sin cambios
-      // ... tu código Android actual ...
     }
     
   } catch (e) {
-    print("❌ Error general al conectar: $e");
+    _lastBleError = "Error general: $e";
+    print("❌ Error general conectando: $e");
   }
 }
 

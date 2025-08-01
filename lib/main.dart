@@ -339,6 +339,9 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   static const MethodChannel _lifecycleChannel = MethodChannel('com.miempresa.ble_sos_ap/lifecycle');
   Timer? _heartbeatTimer;
   int _heartbeatCount = 0;
+  int _scanAttempts = 0;
+  String _lastBleError = "Ninguno";
+  String _bluetoothState = "Verificando...";
 
   @override
   void initState() {
@@ -441,12 +444,19 @@ Future<void> _initializeiOS() async {
   print("✅ iOS inicializado con IOSPlatformManager");
   
   // ✅ ACTUALIZAR UI periódicamente
-Timer.periodic(const Duration(seconds: 1), (timer) {
+Timer.periodic(const Duration(seconds: 2), (timer) async {
   if (_isMounted) {
+    // ✅ CAPTURAR estado de Bluetooth
+    try {
+      BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+      _bluetoothState = bleState.toString().split('.').last;
+    } catch (e) {
+      _bluetoothState = "Error: $e";
+    }
+    
     setState(() {
       sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
       sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-      // El debug container se actualiza automáticamente porque usa BleData.*
     });
   }
 });
@@ -1095,13 +1105,18 @@ Future<bool> startScanAndConnect() async {
   if (isScanning) return false;
   if (BleData.isConnected) return true;
 
+  // ✅ INCREMENTAR contador de escaneos
+  _scanAttempts++;
+  
   if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
+    _lastBleError = "MAC Address vacío";
     print("❌ No hay MAC Address configurado: '${BleData.macAddress}'");
     return false;
   }
 
   BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
   if (adapterState != BluetoothAdapterState.on) {
+    _lastBleError = "Bluetooth apagado: $adapterState";
     print("⚠️ Bluetooth apagado: $adapterState");
     
     if (Platform.isIOS) {
@@ -1110,13 +1125,12 @@ Future<bool> startScanAndConnect() async {
     }
   }
 
-  print("🔍 Iniciando escaneo para: ${BleData.macAddress}");
+  print("🔍 Escaneo #$_scanAttempts para: ${BleData.macAddress}");
   isScanning = true;
 
   try {
     scanResults.clear();
     
-    // ✅ ESCANEO MÁS LARGO para iOS
     Duration scanTimeout = Platform.isIOS 
         ? const Duration(seconds: 15) 
         : const Duration(seconds: 8);
@@ -1125,15 +1139,23 @@ Future<bool> startScanAndConnect() async {
 
     Completer<bool> connectionCompleter = Completer<bool>();
     StreamSubscription? subscription;
+    bool deviceFound = false;
 
     subscription = FlutterBluePlus.scanResults.listen((results) {
+      // ✅ MOSTRAR todos los dispositivos encontrados
+      print("📱 Dispositivos encontrados en escaneo #$_scanAttempts:");
+      for (var result in results) {
+        print("   - ${result.device.remoteId} (RSSI: ${result.rssi})");
+      }
+      
       List<ScanResult> filteredResults = results
           .where((result) => result.device.remoteId.toString() == BleData.macAddress)
           .toList();
       
       if (filteredResults.isNotEmpty) {
-        print("✅ Dispositivo encontrado: ${BleData.macAddress}");
-        print("🔍 RSSI: ${filteredResults.first.rssi}");
+        deviceFound = true;
+        _lastBleError = "Dispositivo encontrado, intentando conectar";
+        print("✅ Dispositivo encontrado: ${BleData.macAddress} (RSSI: ${filteredResults.first.rssi})");
         
         if (_isMounted) {
           setState(() {
@@ -1145,7 +1167,6 @@ Future<bool> startScanAndConnect() async {
         isScanning = false;
         retryScanTimer?.cancel();
 
-        // ✅ CONECTAR inmediatamente
         connectToDevice(
           filteredResults.first.device,
           navigatorKey.currentContext!,
@@ -1164,21 +1185,23 @@ Future<bool> startScanAndConnect() async {
       }
     });
 
-    // ✅ TIMEOUT diferente para iOS
     Duration timeoutDuration = Platform.isIOS 
         ? const Duration(seconds: 20) 
         : const Duration(seconds: 12);
     
     Future.delayed(timeoutDuration, () {
       if (!connectionCompleter.isCompleted) {
-        print("⏱️ Timeout de escaneo: ${BleData.macAddress}");
+        if (!deviceFound) {
+          _lastBleError = "Dispositivo ${BleData.macAddress} no encontrado en escaneo #$_scanAttempts";
+        }
+        
+        print("⏱️ Timeout escaneo #$_scanAttempts: ${BleData.macAddress}");
         FlutterBluePlus.stopScan();
         isScanning = false;
         
         if (!BleData.isConnected) {
-          print("❌ Dispositivo no encontrado: ${BleData.macAddress}");
+          print("❌ Dispositivo no encontrado en escaneo #$_scanAttempts");
           
-          // ✅ REINTENTO específico para iOS
           Duration retryDelay = Platform.isIOS 
               ? const Duration(seconds: 45) 
               : const Duration(seconds: 20);
@@ -1186,7 +1209,7 @@ Future<bool> startScanAndConnect() async {
           retryScanTimer?.cancel();
           retryScanTimer = Timer(retryDelay, () {
             if (!BleData.isConnected) {
-              print("🔄 Reintentando escaneo...");
+              print("🔄 Programando escaneo #${_scanAttempts + 1}...");
               startScanAndConnect();
             }
           });
@@ -1198,7 +1221,8 @@ Future<bool> startScanAndConnect() async {
 
     return connectionCompleter.future;
   } catch (e) {
-    print("❌ Error durante escaneo: $e");
+    _lastBleError = "Error en escaneo: $e";
+    print("❌ Error durante escaneo #$_scanAttempts: $e");
     isScanning = false;
     return false;
   }
@@ -1562,7 +1586,7 @@ Future<bool> startScanAndConnect() async {
     );
   }
 
- Widget _buildPortraitLayout(Size size) {
+Widget _buildPortraitLayout(Size size) {
   return SafeArea(
     child: Stack(
       children: [
@@ -1574,7 +1598,7 @@ Future<bool> startScanAndConnect() async {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ✅ DEBUG PERMANENTE - SIEMPRE VISIBLE
+              // ✅ DEBUG PERMANENTE MEJORADO - ESPECÍFICO PARA BLE
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -1588,7 +1612,7 @@ Future<bool> startScanAndConnect() async {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "🚨 DEBUG INFO PERMANENTE",
+                      "🚨 DEBUG BLE DETALLADO",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -1596,17 +1620,74 @@ Future<bool> startScanAndConnect() async {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text("📱 IMEI: ${BleData.imei}", style: TextStyle(fontSize: 12)),
-                    Text("🔵 MAC: ${BleData.macAddress}", style: TextStyle(fontSize: 12)),
-                    Text("⚙️ conBoton: ${BleData.conBoton}", style: TextStyle(fontSize: 12)),
-                    Text("🔗 BLE Conectado: ${BleData.isConnected ? '✅' : '❌'}", style: TextStyle(fontSize: 12)),
-                    Text("📍 Ubicación OK: ${BleData.locationConfirmed ? '✅' : '❌'}", style: TextStyle(fontSize: 12)),
-                    Text("📞 SOS Number: ${BleData.sosNumber}", style: TextStyle(fontSize: 12)),
-                    Text("🔋 Batería BLE: ${BleData.batteryLevel}%", style: TextStyle(fontSize: 12)),
+                    
+                    // ✅ SECCIÓN 1: DATOS BÁSICOS
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("📋 DATOS BÁSICOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          Text("IMEI: ${BleData.imei}", style: TextStyle(fontSize: 10)),
+                          Text("MAC: ${BleData.macAddress}", style: TextStyle(fontSize: 10)),
+                          Text("SOS: ${BleData.sosNumber}", style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // ✅ SECCIÓN 2: ESTADO BLE DETALLADO
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: BleData.isConnected ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: BleData.isConnected ? Colors.green.shade200 : Colors.orange.shade200
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("🔵 ESTADO BLE:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          Text("Conectado: ${BleData.isConnected ? '✅ SÍ' : '❌ NO'}", style: TextStyle(fontSize: 10)),
+                          Text("RSSI: ${BleData.rssi} dBm", style: TextStyle(fontSize: 10)),
+                          Text("Batería: ${BleData.batteryLevel}%", style: TextStyle(fontSize: 10)),
+                          Text("Escaneos: $_scanAttempts", style: TextStyle(fontSize: 10)),
+                          Text("Último error: $_lastBleError", style: TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // ✅ SECCIÓN 3: ESTADO DEL SISTEMA
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          Text("Bluetooth: $_bluetoothState", style: TextStyle(fontSize: 10)),
+                          Text("Ubicación: ${BleData.locationConfirmed ? '✅' : '❌'}", style: TextStyle(fontSize: 10)),
+                          Text("Escaneando: ${isScanning ? 'SÍ' : 'NO'}", style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 4),
+                    
                     Text(
-                      "⏰ ${DateTime.now().toString().substring(11, 19)}",
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      "⏰ ${DateTime.now().toString().substring(11, 19)} | Actualizando cada 2s",
+                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
