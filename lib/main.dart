@@ -1090,7 +1090,7 @@ Future<void> _initializeAndroid() async {
       print("⚠️ Error en server ping: $e");
     }
   }
-
+ 
   Future<void> renewCriticalPermissions() async {
     try {
       PermissionStatus locationStatus = await Permission.location.status;
@@ -1102,58 +1102,109 @@ Future<void> _initializeAndroid() async {
       print("⚠️ Error verificando permisos: $e");
     }
   }
-Future<bool> startScanAndConnect() async {
-  if (isScanning) return false;
-  if (BleData.isConnected) return true;
-
-  // ✅ INCREMENTAR contador de escaneos
-  _scanAttempts++;
   
-  if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-    print("❌ No hay MAC Address configurado: '${BleData.macAddress}'");
-    return false;
-  }
 
-  BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
-  if (adapterState != BluetoothAdapterState.on) {
-    print("⚠️ Bluetooth apagado: $adapterState");
+   Future<bool> startScanAndConnect() async {
+    if (isScanning) return false;
+    if (BleData.isConnected) return true;
+
+    // ✅ INCREMENTAR contador de escaneos
+    _scanAttempts++;
     
-    if (Platform.isIOS) {
-      print("🍎 iOS: Usuario debe activar Bluetooth manualmente");
+    if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
+      print("❌ No hay MAC Address configurado: '${BleData.macAddress}'");
       return false;
     }
-  }
 
-  print("🔍 Escaneo #$_scanAttempts para: ${BleData.macAddress}");
-  isScanning = true;
+    BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      print("⚠️ Bluetooth apagado: $adapterState");
+      
+      if (Platform.isIOS) {
+        print("🍎 iOS: Usuario debe activar Bluetooth manualmente");
+        return false;
+      }
+    }
+
+    print("🔍 Escaneo #$_scanAttempts para: ${BleData.macAddress}");
+    isScanning = true;
 
   try {
     scanResults.clear();
     
     Duration scanTimeout = Platform.isIOS 
-        ? const Duration(seconds: 15) 
+        ? const Duration(seconds: 30)  // ✅ MÁS TIEMPO para iOS
         : const Duration(seconds: 8);
     
-    await FlutterBluePlus.startScan(timeout: scanTimeout);
+    // ✅ ESCANEO DIFERENTE SEGÚN PLATAFORMA
+    if (Platform.isIOS) {
+      print("🍎 iOS: Escaneando TODOS los dispositivos (sin filtros)");
+      await FlutterBluePlus.startScan(timeout: scanTimeout);
+    } else {
+      print("🤖 Android: Escaneando con filtros normales");
+      await FlutterBluePlus.startScan(timeout: scanTimeout);
+    }
 
     Completer<bool> connectionCompleter = Completer<bool>();
     StreamSubscription? subscription;
     bool deviceFound = false;
+    List<ScanResult> holyIotDevices = []; // ✅ Para almacenar múltiples Holy-IOT
 
     subscription = FlutterBluePlus.scanResults.listen((results) {
       // ✅ MOSTRAR todos los dispositivos encontrados
       print("📱 Dispositivos encontrados en escaneo #$_scanAttempts:");
       for (var result in results) {
-        print("   - ${result.device.remoteId} (RSSI: ${result.rssi})");
+        String deviceName = result.device.platformName.isNotEmpty 
+            ? result.device.platformName 
+            : "Unknown";
+        print("   - ${result.device.remoteId} | $deviceName | RSSI: ${result.rssi}");
       }
       
-      List<ScanResult> filteredResults = results
-          .where((result) => result.device.remoteId.toString() == BleData.macAddress)
-          .toList();
+      List<ScanResult> filteredResults = [];
+      
+      if (Platform.isIOS) {
+        // ✅ iOS: ESTRATEGIA HÍBRIDA
+        // 1. Primero filtrar por nombre "Holy-IOT"
+        List<ScanResult> holyIotCandidates = results
+            .where((result) => result.device.platformName.toLowerCase() == "holy-iot")
+            .toList();
+        
+        print("🍎 iOS: Encontrados ${holyIotCandidates.length} dispositivos Holy-IOT");
+        
+        // 2. Luego verificar MAC Address entre los candidatos
+        for (var candidate in holyIotCandidates) {
+          print("🔍 iOS: Verificando ${candidate.device.remoteId} vs ${BleData.macAddress}");
+          
+          // ✅ COMPARACIÓN FLEXIBLE de MAC Address para iOS
+          String deviceMac = candidate.device.remoteId.toString().toUpperCase();
+          String targetMac = BleData.macAddress.toUpperCase();
+          
+          if (deviceMac == targetMac) {
+            print("✅ iOS: ¡MATCH PERFECTO encontrado!");
+            filteredResults.add(candidate);
+            break; // Solo necesitamos uno
+          }
+        }
+        
+        // 3. Si no hay match exacto, mostrar todos los Holy-IOT para debug
+        if (filteredResults.isEmpty && holyIotCandidates.isNotEmpty) {
+          print("⚠️ iOS: No hay match exacto de MAC. Dispositivos Holy-IOT disponibles:");
+          for (var candidate in holyIotCandidates) {
+            print("   - MAC: ${candidate.device.remoteId} (buscamos: ${BleData.macAddress})");
+          }
+          holyIotDevices = holyIotCandidates; // Guardar para análisis posterior
+        }
+        
+      } else {
+        // ✅ Android: Estrategia original (por MAC Address)
+        filteredResults = results
+            .where((result) => result.device.remoteId.toString() == BleData.macAddress)
+            .toList();
+      }
       
       if (filteredResults.isNotEmpty) {
         deviceFound = true;
-        print("✅ Dispositivo encontrado: ${BleData.macAddress} (RSSI: ${filteredResults.first.rssi})");
+        print("✅ Dispositivo objetivo encontrado: ${BleData.macAddress} (RSSI: ${filteredResults.first.rssi})");
         
         if (_isMounted) {
           setState(() {
@@ -1184,7 +1235,7 @@ Future<bool> startScanAndConnect() async {
     });
 
     Duration timeoutDuration = Platform.isIOS 
-        ? const Duration(seconds: 20) 
+        ? const Duration(seconds: 35)  // ✅ MÁS TIEMPO para timeout iOS
         : const Duration(seconds: 12);
     
     Future.delayed(timeoutDuration, () {
@@ -1194,6 +1245,17 @@ Future<bool> startScanAndConnect() async {
         isScanning = false;
         
         if (!BleData.isConnected) {
+          if (Platform.isIOS && holyIotDevices.isNotEmpty) {
+            print("🍎 iOS: ANÁLISIS POST-TIMEOUT - Dispositivos Holy-IOT encontrados:");
+            for (var device in holyIotDevices) {
+              print("   - MAC: ${device.device.remoteId}");
+              print("   - RSSI: ${device.rssi}");
+              print("   - Nombre: ${device.device.platformName}");
+            }
+            print("🔍 iOS: MAC objetivo configurado: ${BleData.macAddress}");
+            print("❓ iOS: ¿Hay algún problema con el MAC Address almacenado?");
+          }
+          
           print("❌ Dispositivo no encontrado en escaneo #$_scanAttempts");
           
           Duration retryDelay = Platform.isIOS 
@@ -1220,6 +1282,7 @@ Future<bool> startScanAndConnect() async {
     return false;
   }
 }
+
 
   void promptToEnableBluetooth() async {
     print("⚠️ Mostrando alerta para activar Bluetooth...");
