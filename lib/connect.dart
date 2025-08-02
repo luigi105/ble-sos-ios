@@ -37,6 +37,7 @@ void connectToDevice(BluetoothDevice device, BuildContext context, Function disc
           newMacAddress: device.remoteId.toString(),
           connectionStatus: true,
         );
+        await Future.delayed(Duration(seconds: 1));
         discoverServicesCallback(device, context, onSosActivated);
         triggerUpdateTimerCallback();
         return;
