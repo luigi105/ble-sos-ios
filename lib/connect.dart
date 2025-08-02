@@ -254,27 +254,22 @@ void promptToToggleBluetooth() {
   // Puedes mostrar un diálogo visual
 }
 
+// ✅ REEMPLAZAR discoverServices en connect.dart con versión que sigue el protocolo:
+
 void discoverServices(BluetoothDevice device, BuildContext context, Function onSosActivated ) async {
   try {
-    print("🔍 === DESCUBRIENDO SERVICIOS ===");
+    print("🔍 === DESCUBRIENDO SERVICIOS CON PROTOCOLO ===");
     print("Dispositivo: ${device.remoteId}");
     print("Nombre: ${device.platformName}");
     
     List<BluetoothService> services = await device.discoverServices();
     print("📋 Servicios encontrados: ${services.length}");
-    
-    for (var service in services) {
-      print("🔧 Servicio: ${service.uuid}");
-      print("   Características: ${service.characteristics.length}");
-      
-      for (var characteristic in service.characteristics) {
-        print("   - ${characteristic.uuid}");
-        print("     Propiedades: ${characteristic.properties}");
-      }
-    }
 
     // ✅ BUSCAR EL SERVICIO SOS ESPECÍFICO
     bool sosServiceFound = false;
+    BluetoothCharacteristic? writeCharacteristic;
+    BluetoothCharacteristic? notifyCharacteristic;
+    
     for (var service in services) {
       String serviceUuid = service.uuid.toString().toLowerCase();
       print("🔍 Verificando servicio: $serviceUuid");
@@ -282,158 +277,181 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
       if (serviceUuid == '6e400001-b5a3-f393-e0a9-e50e24dcca9e') {
         sosServiceFound = true;
         print("✅ ¡SERVICIO SOS ENCONTRADO!");
-
+        
         // ✅ NOTIFICAR AL DEBUG
         if (_updateSosDebug != null) {
           _updateSosDebug!("servicioEncontrado", true);
         }
         
+        // ✅ IDENTIFICAR CARACTERÍSTICAS SEGÚN PROTOCOLO
         for (var characteristic in service.characteristics) {
           String charUuid = characteristic.uuid.toString().toLowerCase();
-          print("🔍 Verificando característica: $charUuid");
-          print("   Puede notificar: ${characteristic.properties.notify}");
-          print("   Puede leer: ${characteristic.properties.read}");
-          print("   Puede escribir: ${characteristic.properties.write}");
+          print("🔍 Característica: $charUuid");
           
-          // ✅ CONFIGURAR NOTIFICACIONES SOS
-          if (characteristic.properties.notify) {
-            print("🔔 Configurando notificaciones para: $charUuid");
+          // Write characteristic: 6E400002-B5A3-F393-E0A9-E50E24DCCA9E
+          if (charUuid == '6e400002-b5a3-f393-e0a9-e50e24dcca9e') {
+            writeCharacteristic = characteristic;
+            print("✅ Característica WRITE encontrada");
+          }
+          
+          // Notify characteristic: 6E400003-B5A3-F393-E0A9-E50E24DCCA9E  
+          if (charUuid == '6e400003-b5a3-f393-e0a9-e50e24dcca9e') {
+            notifyCharacteristic = characteristic;
+            print("✅ Característica NOTIFY encontrada");
+          }
+        }
+        
+        // ✅ CONFIGURAR NOTIFICACIONES PRIMERO
+        if (notifyCharacteristic != null) {
+          print("🔔 Configurando notificaciones...");
+          
+          try {
+            await notifyCharacteristic.setNotifyValue(true);
+            print("✅ Notificaciones activadas");
             
-            try {
-              await characteristic.setNotifyValue(true);
-              print("✅ Notificaciones activadas exitosamente");
+            // ✅ LISTENER CON PROTOCOLO CORRECTO
+            notifyCharacteristic.value.listen((value) {
+              print("📡 === DATOS BLE PROTOCOLO ===");
+              print("Timestamp: ${DateTime.now().toString().substring(11, 19)}");
+              print("Datos raw: $value");
+              print("Longitud: ${value.length} bytes");
               
-              // ✅ LISTENER CON DEBUG DETALLADO
-              characteristic.value.listen((value) {
-
-                if (_updateSosDebug != null) {
-                    _updateSosDebug!("datosRecibidos", value);
-                  }
-
-                print("📡 === DATOS RECIBIDOS DEL BLE ===");
-                print("Timestamp: ${DateTime.now().toString().substring(11, 19)}");
-                print("Datos raw: $value");
-                print("Longitud: ${value.length} bytes");
-                
-                if (value.isNotEmpty) {
-                  // ✅ MOSTRAR CADA BYTE
-                  for (int i = 0; i < value.length; i++) {
-                    print("  Byte $i: 0x${value[i].toRadixString(16).padLeft(2, '0')} (${value[i]})");
-                  }
+              // ✅ ACTUALIZAR DEBUG
+              if (_updateSosDebug != null) {
+                _updateSosDebug!("datosRecibidos", value);
+              }
+              
+              if (value.isNotEmpty && value.length >= 4) {
+                // ✅ VERIFICAR PROTOCOLO: F3 15 F3 LEN XX
+                if (value.length >= 5 && 
+                    value[0] == 0xF3 && 
+                    value[1] == 0x15 && 
+                    value[2] == 0xF3) {
                   
-                  // ✅ VERIFICAR BYTE DE BOTÓN (posición 4)
+                  int dataLength = value[3];
+                  print("🔘 COMANDO BOTÓN detectado (F3 15 F3)");
+                  print("   Longitud datos: $dataLength");
+                  
                   if (value.length >= 5) {
-                    int buttonByte = value[4];
-                    print("🔘 Byte del botón (posición 4): $buttonByte");
+                    int buttonState = value[4];
+                    print("   Estado botón: $buttonState");
                     
-                    if (buttonByte == 1) {
+                    if (buttonState == 1) {
+                      print("🚨 ¡BOTÓN SOS PRESIONADO! (protocolo correcto)");
+                      
+                      // ✅ ACTUALIZAR DEBUG
                       if (_updateSosDebug != null) {
-                        _updateSosDebug!("botonPresionado", buttonByte);
+                        _updateSosDebug!("botonPresionado", buttonState);
                       }
-                      print("🚨 ¡BOTÓN SOS PRESIONADO! (value[4] = 1)");
-                      print("Estado buttonPressed actual: $buttonPressed");
-                      print("Timer pánico activo: ${panicTimer != null}");
                       
                       if (!buttonPressed && panicTimer == null) {
                         print("✅ Iniciando secuencia SOS...");
                         buttonPressed = true;
                         
                         panicTimer = Timer(const Duration(seconds: 3), () {
-                          print("⏰ Timer de 3 segundos completado");
-                          print("Estado buttonPressed en timer: $buttonPressed");
-                          
                           if (buttonPressed) {
                             print("🚨 ¡EJECUTANDO ALERTA SOS!");
                             
                             // 🔊 Reproducir sonido de alerta
                             if (BleData.sosSoundEnabled) {
-                              print("🔊 Reproduciendo sonido SOS...");
                               CommunicationService().playSosSound();
-                            } else {
-                              print("🔇 Sonido SOS deshabilitado");
                             }
 
-                            // 🔹 Intentamos traer la app al frente
-                            print("📱 Trayendo app al frente...");
+                            // 🔹 Traer app al frente
                             CommunicationService().bringToForeground();  
 
-                            // ✅ Llamar función para actualizar UI
-                            print("🔄 Actualizando UI...");
+                            // ✅ Actualizar UI
                             onSosActivated();
 
                             // 📌 Enviar alerta SOS
-                            print("📡 Enviando alerta SOS al servidor...");
                             CommunicationService().sendSosAlert(device.remoteId.toString());
-                            
-                            print("🔔 Mostrando alerta en pantalla...");
                             showPanicAlert(context, device.remoteId.toString());
                             
-                            // 📞 Llamada automática si está activada
+                            // 📞 Llamada automática
                             if (BleData.autoCall) {
-                              print("📞 Llamada automática activada, iniciando llamada en 1 segundo...");
                               Future.delayed(const Duration(seconds: 1), () {
                                 CommunicationService().callSosNumber();
                               });
-                            } else {
-                              print("📞 Llamada automática desactivada");
                             }
-                            
-                            print("✅ Secuencia SOS completada");
-                          } else {
-                            print("⚠️ buttonPressed era false en el timer - SOS cancelado");
                           }
                           panicTimer = null;
                         });
-                        
-                        print("⏳ Timer de 3 segundos iniciado");
-                      } else {
-                        print("⚠️ SOS ya en progreso - ignorando");
-                        print("  buttonPressed: $buttonPressed");
-                        print("  panicTimer activo: ${panicTimer != null}");
                       }
                       
-                    } else if (buttonByte == 0) {
-
+                    } else if (buttonState == 0) {
+                      print("🔘 Botón soltado (protocolo correcto)");
+                      
+                      // ✅ ACTUALIZAR DEBUG
                       if (_updateSosDebug != null) {
-                        _updateSosDebug!("botonSoltado", buttonByte);
+                        _updateSosDebug!("botonSoltado", buttonState);
                       }
-
-                      print("🔘 Botón soltado (value[4] = 0)");
                       
                       if (panicTimer != null && panicTimer!.isActive) {
-                        print("❌ Cancelando timer SOS (botón soltado)");
+                        print("❌ Cancelando timer SOS");
                         panicTimer!.cancel();
                         panicTimer = null;
                       }
-                      
-                      if (buttonPressed) {
-                        print("🔄 Reseteando estado buttonPressed");
-                        buttonPressed = false;
-                      }
-                      
-                    } else {
-                      print("🔘 Valor de botón desconocido: $buttonByte");
+                      buttonPressed = false;
                     }
-                  } else {
-                    print("⚠️ Datos muy cortos (${value.length} bytes), esperaba al menos 5");
                   }
+                }
+                // ✅ VERIFICAR PROTOCOLO BATERÍA: F3 16 F3 LEN XX
+                else if (value.length >= 5 && 
+                         value[0] == 0xF3 && 
+                         value[1] == 0x16 && 
+                         value[2] == 0xF3) {
                   
-                } else {
-                  print("⚠️ Datos vacíos recibidos");
+                  int dataLength = value[3];
+                  if (value.length >= 5) {
+                    int batteryPercent = value[4];
+                    print("🔋 Batería recibida: $batteryPercent%");
+                    
+                    // ✅ ACTUALIZAR BATERÍA EN BleData
+                    BleData.update(newBatteryLevel: batteryPercent);
+                  }
+                }
+                else {
+                  print("❓ Datos no reconocidos por protocolo:");
+                  for (int i = 0; i < value.length; i++) {
+                    print("  Byte $i: 0x${value[i].toRadixString(16).padLeft(2, '0')} (${value[i]})");
+                  }
                 }
                 
-                print("📡 === FIN DATOS BLE ===");
-              }, onError: (error) {
-                print("❌ Error en listener de notificaciones: $error");
-              });
+              } else {
+                print("⚠️ Datos muy cortos: ${value.length} bytes");
+              }
               
-            } catch (e) {
-              print("❌ Error configurando notificaciones: $e");
-            }
-          } else {
-            print("⚠️ Característica no soporta notificaciones");
+              print("📡 === FIN DATOS BLE ===");
+            });
+            
+          } catch (e) {
+            print("❌ Error configurando notificaciones: $e");
           }
         }
+        
+        // ✅ ENVIAR COMANDO PARA ACTIVAR REPORTE AUTOMÁTICO DE BOTÓN
+        if (writeCharacteristic != null) {
+          print("📝 Enviando comandos de configuración...");
+          
+          try {
+            // ✅ SOLICITAR BATERÍA (Comando 17): F3 16 F3
+            List<int> batteryCommand = [0xF3, 0x16, 0xF3];
+            await writeCharacteristic.write(batteryCommand);
+            print("✅ Comando de batería enviado: ${batteryCommand.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
+            
+            // ✅ ESPERAR UN POCO entre comandos
+            await Future.delayed(Duration(milliseconds: 500));
+            
+            print("✅ Configuración BLE completada según protocolo");
+            
+          } catch (e) {
+            print("❌ Error enviando comandos: $e");
+          }
+        } else {
+          print("❌ Característica WRITE no encontrada");
+        }
+        
+        break; // Solo necesitamos un servicio
       }
     }
     
@@ -445,7 +463,7 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
       }
     }
     
-    print("🔍 === FIN DESCUBRIMIENTO DE SERVICIOS ===");
+    print("🔍 === FIN CONFIGURACIÓN PROTOCOLO ===");
     
   } catch (e) {
     print("❌ Error en discoverServices: $e");
