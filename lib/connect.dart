@@ -263,16 +263,28 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
     print("🔍 === DEBUG COMPLETO DESCUBRIMIENTO BLE ===");
     print("Dispositivo: ${device.remoteId}");
     print("Nombre: ${device.platformName}");
-    print("Estado conexión: ${await device.connectionState.first}");
     
-    // ✅ VERIFICAR ESTADO DE CONEXIÓN PRIMERO
+    // ✅ NOTIFICAR INICIO DEL DESCUBRIMIENTO
+    if (_updateSosDebug != null) {
+      _updateSosDebug!("discoveryStart", "Iniciando descubrimiento...");
+    }
+    
+    // ✅ VERIFICAR ESTADO DE CONEXIÓN
     BluetoothConnectionState connectionState = await device.connectionState.first;
+    print("Estado conexión: $connectionState");
+    
     if (connectionState != BluetoothConnectionState.connected) {
       print("❌ DISPOSITIVO NO CONECTADO: $connectionState");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("discoveryStart", "ERROR: No conectado");
+      }
       return;
     }
     
     print("✅ Dispositivo confirmado como conectado");
+    if (_updateSosDebug != null) {
+      _updateSosDebug!("discoveryStart", "Conectado, descubriendo...");
+    }
     
     // ✅ DESCUBRIR SERVICIOS CON TIMEOUT
     print("🔍 Iniciando descubrimiento de servicios...");
@@ -283,72 +295,51 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
       print("✅ Descubrimiento completado");
     } catch (e) {
       print("❌ Error o timeout en descubrimiento: $e");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("discoveryStart", "ERROR: Timeout descubrimiento");
+      }
       return;
     }
     
-    print("📋 === ANÁLISIS COMPLETO DE SERVICIOS ===");
-    print("Total servicios encontrados: ${services.length}");
+    print("📋 Total servicios encontrados: ${services.length}");
+    
+    // ✅ NOTIFICAR SERVICIOS ENCONTRADOS
+    if (_updateSosDebug != null) {
+      _updateSosDebug!("servicesFound", {
+        'total': services.length,
+        'uuids': services.map((s) => s.uuid.toString()).toList()
+      });
+    }
     
     if (services.isEmpty) {
       print("❌ ¡NO SE ENCONTRARON SERVICIOS!");
-      print("Esto indica un problema de conexión o configuración del dispositivo");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("discoveryStart", "ERROR: Sin servicios");
+      }
       return;
     }
     
     // ✅ LISTAR TODOS LOS SERVICIOS ENCONTRADOS
+    print("📋 === SERVICIOS ENCONTRADOS ===");
     for (int i = 0; i < services.length; i++) {
       var service = services[i];
       String serviceUuid = service.uuid.toString();
       print("📁 Servicio $i: $serviceUuid");
       
-      // ✅ VERIFICAR SI ES EL SERVICIO QUE BUSCAMOS
       String targetService = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
       bool isTargetService = serviceUuid.toLowerCase() == targetService.toLowerCase();
+      print("   ¿Es servicio SOS? ${isTargetService ? '✅ SÍ' : '❌ NO'}");
       
-      print("   ¿Es el servicio SOS? ${isTargetService ? '✅ SÍ' : '❌ NO'}");
-      
-      if (isTargetService) {
-        print("   🎯 ¡SERVICIO SOS ENCONTRADO!");
+      // ✅ LISTAR CARACTERÍSTICAS
+      print("   Características (${service.characteristics.length}):");
+      for (int j = 0; j < service.characteristics.length; j++) {
+        var characteristic = service.characteristics[j];
+        String charUuid = characteristic.uuid.toString();
+        print("   📝 Característica $j: $charUuid");
+        print("      Read: ${characteristic.properties.read}");
+        print("      Write: ${characteristic.properties.write}");
+        print("      Notify: ${characteristic.properties.notify}");
       }
-      
-      // ✅ LISTAR TODAS LAS CARACTERÍSTICAS
-      try {
-        print("   Características (${service.characteristics.length}):");
-        
-        if (service.characteristics.isEmpty) {
-          print("   ⚠️ Sin características encontradas");
-        }
-        
-        for (int j = 0; j < service.characteristics.length; j++) {
-          var characteristic = service.characteristics[j];
-          String charUuid = characteristic.uuid.toString();
-          
-          print("   📝 Característica $j: $charUuid");
-          print("      Propiedades:");
-          print("        - Read: ${characteristic.properties.read}");
-          print("        - Write: ${characteristic.properties.write}");
-          print("        - Notify: ${characteristic.properties.notify}");
-          print("        - Indicate: ${characteristic.properties.indicate}");
-          
-          // ✅ VERIFICAR CARACTERÍSTICAS ESPECÍFICAS
-          String writeTarget = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-          String notifyTarget = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-          
-          bool isWriteChar = charUuid.toLowerCase() == writeTarget.toLowerCase();
-          bool isNotifyChar = charUuid.toLowerCase() == notifyTarget.toLowerCase();
-          
-          if (isWriteChar) {
-            print("      🔧 ¡CARACTERÍSTICA WRITE ENCONTRADA!");
-          }
-          if (isNotifyChar) {
-            print("      🔔 ¡CARACTERÍSTICA NOTIFY ENCONTRADA!");
-          }
-        }
-      } catch (e) {
-        print("   ❌ Error obteniendo características: $e");
-      }
-      
-      print(""); // Línea en blanco para separar servicios
     }
     
     // ✅ BUSCAR Y CONFIGURAR EL SERVICIO SOS
@@ -356,7 +347,7 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
     BluetoothCharacteristic? writeCharacteristic;
     BluetoothCharacteristic? notifyCharacteristic;
     
-    print("🎯 === BUSCANDO SERVICIO SOS ESPECÍFICO ===");
+    print("🎯 === BUSCANDO SERVICIO SOS ===");
     
     for (var service in services) {
       String serviceUuid = service.uuid.toString().toLowerCase();
@@ -371,12 +362,11 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
         sosServiceFound = true;
         print("✅ ¡SERVICIO SOS CONFIRMADO!");
         
-        // ✅ NOTIFICAR AL DEBUG
+        // ✅ NOTIFICAR SERVICIO SOS ENCONTRADO
         if (_updateSosDebug != null) {
-          _updateSosDebug!("servicioEncontrado", true);
+          _updateSosDebug!("sosServiceFound", true);
         }
         
-        // ✅ BUSCAR CARACTERÍSTICAS ESPECÍFICAS
         print("🔍 Buscando características write y notify...");
         
         for (var characteristic in service.characteristics) {
@@ -385,17 +375,23 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
           // Write characteristic: 6E400002-B5A3-F393-E0A9-E50E24DCCA9E
           if (charUuid == "6e400002-b5a3-f393-e0a9-e50e24dcca9e") {
             writeCharacteristic = characteristic;
-            print("✅ Característica WRITE confirmada");
-            print("   UUID: $charUuid");
-            print("   Puede escribir: ${characteristic.properties.write}");
+            print("✅ Característica WRITE confirmada: $charUuid");
+            
+            // ✅ NOTIFICAR WRITE ENCONTRADA
+            if (_updateSosDebug != null) {
+              _updateSosDebug!("writeCharFound", true);
+            }
           }
           
           // Notify characteristic: 6E400003-B5A3-F393-E0A9-E50E24DCCA9E  
           if (charUuid == "6e400003-b5a3-f393-e0a9-e50e24dcca9e") {
             notifyCharacteristic = characteristic;
-            print("✅ Característica NOTIFY confirmada");
-            print("   UUID: $charUuid");
-            print("   Puede notificar: ${characteristic.properties.notify}");
+            print("✅ Característica NOTIFY confirmada: $charUuid");
+            
+            // ✅ NOTIFICAR NOTIFY ENCONTRADA
+            if (_updateSosDebug != null) {
+              _updateSosDebug!("notifyCharFound", true);
+            }
           }
         }
         
@@ -403,32 +399,25 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
       }
     }
     
-    // ✅ RESULTADO DEL DESCUBRIMIENTO
-    print("📊 === RESUMEN DE DESCUBRIMIENTO ===");
-    print("Servicios totales: ${services.length}");
-    print("Servicio SOS encontrado: ${sosServiceFound ? '✅ SÍ' : '❌ NO'}");
-    print("Característica Write: ${writeCharacteristic != null ? '✅ SÍ' : '❌ NO'}");
-    print("Característica Notify: ${notifyCharacteristic != null ? '✅ SÍ' : '❌ NO'}");
+    // ✅ VERIFICAR RESULTADO
+    print("📊 === RESUMEN ===");
+    print("Servicio SOS: ${sosServiceFound ? '✅' : '❌'}");
+    print("Write: ${writeCharacteristic != null ? '✅' : '❌'}");
+    print("Notify: ${notifyCharacteristic != null ? '✅' : '❌'}");
     
     if (!sosServiceFound) {
-      print("❌ PROBLEMA: Servicio SOS no encontrado");
-      print("💡 Posibles causas:");
-      print("   1. Dispositivo no tiene el servicio configurado");
-      print("   2. UUID del servicio es diferente");
-      print("   3. Dispositivo no está completamente conectado");
-      print("   4. Problema de firmware del dispositivo BLE");
-      
-      print("🔍 Servicios disponibles para análisis:");
-      for (var service in services) {
-        print("   - ${service.uuid}");
+      print("❌ SERVICIO SOS NO ENCONTRADO");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "ERROR: Sin servicio SOS");
       }
       return;
     }
     
     if (writeCharacteristic == null || notifyCharacteristic == null) {
-      print("❌ PROBLEMA: Características necesarias no encontradas");
-      print("Write encontrada: ${writeCharacteristic != null}");
-      print("Notify encontrada: ${notifyCharacteristic != null}");
+      print("❌ CARACTERÍSTICAS FALTANTES");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "ERROR: Sin características");
+      }
       return;
     }
     
@@ -437,7 +426,12 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
     
     try {
       await notifyCharacteristic.setNotifyValue(true);
-      print("✅ Notificaciones activadas exitosamente");
+      print("✅ Notificaciones activadas");
+      
+      // ✅ NOTIFICAR CONFIGURACIÓN EXITOSA
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "Notificaciones activadas");
+      }
       
       // ✅ CONFIGURAR LISTENER
       notifyCharacteristic.value.listen((value) {
@@ -446,13 +440,14 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
         print("Datos: $value");
         print("Hex: ${value.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
         
-        // ✅ ACTUALIZAR DEBUG
+        // ✅ NOTIFICAR DATOS RECIBIDOS
         if (_updateSosDebug != null) {
-          _updateSosDebug!("datosRecibidos", value);
+          _updateSosDebug!("dataReceived", value);
         }
         
         // ✅ PROCESAR SEGÚN PROTOCOLO
         if (value.isNotEmpty && value.length >= 4) {
+          // Verificar comando botón: F3 15 F3 LEN XX
           if (value.length >= 5 && 
               value[0] == 0xF3 && 
               value[1] == 0x15 && 
@@ -460,29 +455,40 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
             
             print("🔘 COMANDO BOTÓN detectado");
             int buttonState = value[4];
-            print("Estado: $buttonState (${buttonState == 1 ? 'PRESIONADO' : 'SOLTADO'})");
+            print("Estado botón: $buttonState (${buttonState == 1 ? 'PRESIONADO' : 'SOLTADO'})");
             
             if (buttonState == 1) {
               print("🚨 ¡BOTÓN SOS PRESIONADO!");
               
+              // ✅ NOTIFICAR BOTÓN PRESIONADO
               if (_updateSosDebug != null) {
-                _updateSosDebug!("botonPresionado", buttonState);
+                _updateSosDebug!("buttonPressed", buttonState);
               }
               
               if (!buttonPressed && panicTimer == null) {
+                print("✅ Iniciando secuencia SOS (3 segundos)...");
                 buttonPressed = true;
+                
                 panicTimer = Timer(const Duration(seconds: 3), () {
                   if (buttonPressed) {
                     print("🚨 ¡EJECUTANDO ALERTA SOS!");
                     
+                    // 🔊 Reproducir sonido
                     if (BleData.sosSoundEnabled) {
                       CommunicationService().playSosSound();
                     }
+                    
+                    // 🔹 Traer app al frente
                     CommunicationService().bringToForeground();  
+                    
+                    // ✅ Actualizar UI
                     onSosActivated();
+                    
+                    // 📌 Enviar alerta
                     CommunicationService().sendSosAlert(device.remoteId.toString());
                     showPanicAlert(context, device.remoteId.toString());
                     
+                    // 📞 Llamada automática
                     if (BleData.autoCall) {
                       Future.delayed(const Duration(seconds: 1), () {
                         CommunicationService().callSosNumber();
@@ -496,27 +502,55 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
             } else if (buttonState == 0) {
               print("🔘 Botón soltado");
               
+              // ✅ NOTIFICAR BOTÓN SOLTADO
               if (_updateSosDebug != null) {
-                _updateSosDebug!("botonSoltado", buttonState);
+                _updateSosDebug!("buttonReleased", buttonState);
               }
               
               if (panicTimer != null && panicTimer!.isActive) {
+                print("❌ Cancelando timer SOS");
                 panicTimer!.cancel();
                 panicTimer = null;
               }
               buttonPressed = false;
             }
           }
+          // Verificar comando batería: F3 16 F3 LEN XX
+          else if (value.length >= 5 && 
+                   value[0] == 0xF3 && 
+                   value[1] == 0x16 && 
+                   value[2] == 0xF3) {
+            
+            int batteryPercent = value[4];
+            print("🔋 Batería: $batteryPercent%");
+            BleData.update(newBatteryLevel: batteryPercent);
+          }
+          else {
+            print("❓ Datos no reconocidos:");
+            for (int i = 0; i < value.length; i++) {
+              print("  Byte $i: 0x${value[i].toRadixString(16).padLeft(2, '0')} (${value[i]})");
+            }
+          }
+        }
+        
+        print("📡 === FIN DATOS ===");
+      }, onError: (error) {
+        print("❌ Error en listener: $error");
+        if (_updateSosDebug != null) {
+          _updateSosDebug!("configStatus", "ERROR: Listener falló");
         }
       });
       
     } catch (e) {
       print("❌ Error configurando notificaciones: $e");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "ERROR: Configuración falló");
+      }
       return;
     }
     
-    // ✅ ENVIAR COMANDO INICIAL
-    print("📝 === ENVIANDO COMANDOS INICIALES ===");
+    // ✅ ENVIAR COMANDOS INICIALES
+    print("📝 === ENVIANDO COMANDOS ===");
     
     try {
       // Comando batería: F3 16 F3
@@ -525,16 +559,27 @@ void discoverServices(BluetoothDevice device, BuildContext context, Function onS
       print("✅ Comando batería enviado: ${batteryCommand.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
       
       await Future.delayed(Duration(milliseconds: 500));
-      print("✅ Configuración completa");
+      
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "Comandos enviados OK");
+      }
+      
+      print("✅ Configuración BLE completa");
       
     } catch (e) {
       print("❌ Error enviando comandos: $e");
+      if (_updateSosDebug != null) {
+        _updateSosDebug!("configStatus", "ERROR: Comandos fallaron");
+      }
     }
     
-    print("🔍 === FIN DEBUG DESCUBRIMIENTO ===");
+    print("🔍 === FIN CONFIGURACIÓN ===");
     
   } catch (e) {
     print("❌ Error general en discoverServices: $e");
+    if (_updateSosDebug != null) {
+      _updateSosDebug!("configStatus", "ERROR: Excepción general");
+    }
   }
 }
 
