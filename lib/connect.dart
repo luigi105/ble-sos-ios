@@ -256,217 +256,285 @@ void promptToToggleBluetooth() {
 
 // ✅ REEMPLAZAR discoverServices en connect.dart con versión que sigue el protocolo:
 
+// ✅ REEMPLAZAR discoverServices en connect.dart con versión de debug completo:
+
 void discoverServices(BluetoothDevice device, BuildContext context, Function onSosActivated ) async {
   try {
-    print("🔍 === DESCUBRIENDO SERVICIOS CON PROTOCOLO ===");
+    print("🔍 === DEBUG COMPLETO DESCUBRIMIENTO BLE ===");
     print("Dispositivo: ${device.remoteId}");
     print("Nombre: ${device.platformName}");
+    print("Estado conexión: ${await device.connectionState.first}");
     
-    List<BluetoothService> services = await device.discoverServices();
-    print("📋 Servicios encontrados: ${services.length}");
-
-    // ✅ BUSCAR EL SERVICIO SOS ESPECÍFICO
+    // ✅ VERIFICAR ESTADO DE CONEXIÓN PRIMERO
+    BluetoothConnectionState connectionState = await device.connectionState.first;
+    if (connectionState != BluetoothConnectionState.connected) {
+      print("❌ DISPOSITIVO NO CONECTADO: $connectionState");
+      return;
+    }
+    
+    print("✅ Dispositivo confirmado como conectado");
+    
+    // ✅ DESCUBRIR SERVICIOS CON TIMEOUT
+    print("🔍 Iniciando descubrimiento de servicios...");
+    List<BluetoothService> services;
+    
+    try {
+      services = await device.discoverServices().timeout(Duration(seconds: 10));
+      print("✅ Descubrimiento completado");
+    } catch (e) {
+      print("❌ Error o timeout en descubrimiento: $e");
+      return;
+    }
+    
+    print("📋 === ANÁLISIS COMPLETO DE SERVICIOS ===");
+    print("Total servicios encontrados: ${services.length}");
+    
+    if (services.isEmpty) {
+      print("❌ ¡NO SE ENCONTRARON SERVICIOS!");
+      print("Esto indica un problema de conexión o configuración del dispositivo");
+      return;
+    }
+    
+    // ✅ LISTAR TODOS LOS SERVICIOS ENCONTRADOS
+    for (int i = 0; i < services.length; i++) {
+      var service = services[i];
+      String serviceUuid = service.uuid.toString();
+      print("📁 Servicio $i: $serviceUuid");
+      
+      // ✅ VERIFICAR SI ES EL SERVICIO QUE BUSCAMOS
+      String targetService = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      bool isTargetService = serviceUuid.toLowerCase() == targetService.toLowerCase();
+      
+      print("   ¿Es el servicio SOS? ${isTargetService ? '✅ SÍ' : '❌ NO'}");
+      
+      if (isTargetService) {
+        print("   🎯 ¡SERVICIO SOS ENCONTRADO!");
+      }
+      
+      // ✅ LISTAR TODAS LAS CARACTERÍSTICAS
+      try {
+        print("   Características (${service.characteristics.length}):");
+        
+        if (service.characteristics.isEmpty) {
+          print("   ⚠️ Sin características encontradas");
+        }
+        
+        for (int j = 0; j < service.characteristics.length; j++) {
+          var characteristic = service.characteristics[j];
+          String charUuid = characteristic.uuid.toString();
+          
+          print("   📝 Característica $j: $charUuid");
+          print("      Propiedades:");
+          print("        - Read: ${characteristic.properties.read}");
+          print("        - Write: ${characteristic.properties.write}");
+          print("        - Notify: ${characteristic.properties.notify}");
+          print("        - Indicate: ${characteristic.properties.indicate}");
+          
+          // ✅ VERIFICAR CARACTERÍSTICAS ESPECÍFICAS
+          String writeTarget = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+          String notifyTarget = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+          
+          bool isWriteChar = charUuid.toLowerCase() == writeTarget.toLowerCase();
+          bool isNotifyChar = charUuid.toLowerCase() == notifyTarget.toLowerCase();
+          
+          if (isWriteChar) {
+            print("      🔧 ¡CARACTERÍSTICA WRITE ENCONTRADA!");
+          }
+          if (isNotifyChar) {
+            print("      🔔 ¡CARACTERÍSTICA NOTIFY ENCONTRADA!");
+          }
+        }
+      } catch (e) {
+        print("   ❌ Error obteniendo características: $e");
+      }
+      
+      print(""); // Línea en blanco para separar servicios
+    }
+    
+    // ✅ BUSCAR Y CONFIGURAR EL SERVICIO SOS
     bool sosServiceFound = false;
     BluetoothCharacteristic? writeCharacteristic;
     BluetoothCharacteristic? notifyCharacteristic;
     
+    print("🎯 === BUSCANDO SERVICIO SOS ESPECÍFICO ===");
+    
     for (var service in services) {
       String serviceUuid = service.uuid.toString().toLowerCase();
-      print("🔍 Verificando servicio: $serviceUuid");
+      String targetServiceUuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
       
-      if (serviceUuid == '6e400001-b5a3-f393-e0a9-e50e24dcca9e') {
+      print("🔍 Comparando:");
+      print("   Encontrado: '$serviceUuid'");
+      print("   Buscando:   '$targetServiceUuid'");
+      print("   ¿Coincide?  ${serviceUuid == targetServiceUuid}");
+      
+      if (serviceUuid == targetServiceUuid) {
         sosServiceFound = true;
-        print("✅ ¡SERVICIO SOS ENCONTRADO!");
+        print("✅ ¡SERVICIO SOS CONFIRMADO!");
         
         // ✅ NOTIFICAR AL DEBUG
         if (_updateSosDebug != null) {
           _updateSosDebug!("servicioEncontrado", true);
         }
         
-        // ✅ IDENTIFICAR CARACTERÍSTICAS SEGÚN PROTOCOLO
+        // ✅ BUSCAR CARACTERÍSTICAS ESPECÍFICAS
+        print("🔍 Buscando características write y notify...");
+        
         for (var characteristic in service.characteristics) {
           String charUuid = characteristic.uuid.toString().toLowerCase();
-          print("🔍 Característica: $charUuid");
           
           // Write characteristic: 6E400002-B5A3-F393-E0A9-E50E24DCCA9E
-          if (charUuid == '6e400002-b5a3-f393-e0a9-e50e24dcca9e') {
+          if (charUuid == "6e400002-b5a3-f393-e0a9-e50e24dcca9e") {
             writeCharacteristic = characteristic;
-            print("✅ Característica WRITE encontrada");
+            print("✅ Característica WRITE confirmada");
+            print("   UUID: $charUuid");
+            print("   Puede escribir: ${characteristic.properties.write}");
           }
           
           // Notify characteristic: 6E400003-B5A3-F393-E0A9-E50E24DCCA9E  
-          if (charUuid == '6e400003-b5a3-f393-e0a9-e50e24dcca9e') {
+          if (charUuid == "6e400003-b5a3-f393-e0a9-e50e24dcca9e") {
             notifyCharacteristic = characteristic;
-            print("✅ Característica NOTIFY encontrada");
+            print("✅ Característica NOTIFY confirmada");
+            print("   UUID: $charUuid");
+            print("   Puede notificar: ${characteristic.properties.notify}");
           }
         }
         
-        // ✅ CONFIGURAR NOTIFICACIONES PRIMERO
-        if (notifyCharacteristic != null) {
-          print("🔔 Configurando notificaciones...");
-          
-          try {
-            await notifyCharacteristic.setNotifyValue(true);
-            print("✅ Notificaciones activadas");
-            
-            // ✅ LISTENER CON PROTOCOLO CORRECTO
-            notifyCharacteristic.value.listen((value) {
-              print("📡 === DATOS BLE PROTOCOLO ===");
-              print("Timestamp: ${DateTime.now().toString().substring(11, 19)}");
-              print("Datos raw: $value");
-              print("Longitud: ${value.length} bytes");
-              
-              // ✅ ACTUALIZAR DEBUG
-              if (_updateSosDebug != null) {
-                _updateSosDebug!("datosRecibidos", value);
-              }
-              
-              if (value.isNotEmpty && value.length >= 4) {
-                // ✅ VERIFICAR PROTOCOLO: F3 15 F3 LEN XX
-                if (value.length >= 5 && 
-                    value[0] == 0xF3 && 
-                    value[1] == 0x15 && 
-                    value[2] == 0xF3) {
-                  
-                  int dataLength = value[3];
-                  print("🔘 COMANDO BOTÓN detectado (F3 15 F3)");
-                  print("   Longitud datos: $dataLength");
-                  
-                  if (value.length >= 5) {
-                    int buttonState = value[4];
-                    print("   Estado botón: $buttonState");
-                    
-                    if (buttonState == 1) {
-                      print("🚨 ¡BOTÓN SOS PRESIONADO! (protocolo correcto)");
-                      
-                      // ✅ ACTUALIZAR DEBUG
-                      if (_updateSosDebug != null) {
-                        _updateSosDebug!("botonPresionado", buttonState);
-                      }
-                      
-                      if (!buttonPressed && panicTimer == null) {
-                        print("✅ Iniciando secuencia SOS...");
-                        buttonPressed = true;
-                        
-                        panicTimer = Timer(const Duration(seconds: 3), () {
-                          if (buttonPressed) {
-                            print("🚨 ¡EJECUTANDO ALERTA SOS!");
-                            
-                            // 🔊 Reproducir sonido de alerta
-                            if (BleData.sosSoundEnabled) {
-                              CommunicationService().playSosSound();
-                            }
-
-                            // 🔹 Traer app al frente
-                            CommunicationService().bringToForeground();  
-
-                            // ✅ Actualizar UI
-                            onSosActivated();
-
-                            // 📌 Enviar alerta SOS
-                            CommunicationService().sendSosAlert(device.remoteId.toString());
-                            showPanicAlert(context, device.remoteId.toString());
-                            
-                            // 📞 Llamada automática
-                            if (BleData.autoCall) {
-                              Future.delayed(const Duration(seconds: 1), () {
-                                CommunicationService().callSosNumber();
-                              });
-                            }
-                          }
-                          panicTimer = null;
-                        });
-                      }
-                      
-                    } else if (buttonState == 0) {
-                      print("🔘 Botón soltado (protocolo correcto)");
-                      
-                      // ✅ ACTUALIZAR DEBUG
-                      if (_updateSosDebug != null) {
-                        _updateSosDebug!("botonSoltado", buttonState);
-                      }
-                      
-                      if (panicTimer != null && panicTimer!.isActive) {
-                        print("❌ Cancelando timer SOS");
-                        panicTimer!.cancel();
-                        panicTimer = null;
-                      }
-                      buttonPressed = false;
-                    }
-                  }
-                }
-                // ✅ VERIFICAR PROTOCOLO BATERÍA: F3 16 F3 LEN XX
-                else if (value.length >= 5 && 
-                         value[0] == 0xF3 && 
-                         value[1] == 0x16 && 
-                         value[2] == 0xF3) {
-                  
-                  int dataLength = value[3];
-                  if (value.length >= 5) {
-                    int batteryPercent = value[4];
-                    print("🔋 Batería recibida: $batteryPercent%");
-                    
-                    // ✅ ACTUALIZAR BATERÍA EN BleData
-                    BleData.update(newBatteryLevel: batteryPercent);
-                  }
-                }
-                else {
-                  print("❓ Datos no reconocidos por protocolo:");
-                  for (int i = 0; i < value.length; i++) {
-                    print("  Byte $i: 0x${value[i].toRadixString(16).padLeft(2, '0')} (${value[i]})");
-                  }
-                }
-                
-              } else {
-                print("⚠️ Datos muy cortos: ${value.length} bytes");
-              }
-              
-              print("📡 === FIN DATOS BLE ===");
-            });
-            
-          } catch (e) {
-            print("❌ Error configurando notificaciones: $e");
-          }
-        }
-        
-        // ✅ ENVIAR COMANDO PARA ACTIVAR REPORTE AUTOMÁTICO DE BOTÓN
-        if (writeCharacteristic != null) {
-          print("📝 Enviando comandos de configuración...");
-          
-          try {
-            // ✅ SOLICITAR BATERÍA (Comando 17): F3 16 F3
-            List<int> batteryCommand = [0xF3, 0x16, 0xF3];
-            await writeCharacteristic.write(batteryCommand);
-            print("✅ Comando de batería enviado: ${batteryCommand.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
-            
-            // ✅ ESPERAR UN POCO entre comandos
-            await Future.delayed(Duration(milliseconds: 500));
-            
-            print("✅ Configuración BLE completada según protocolo");
-            
-          } catch (e) {
-            print("❌ Error enviando comandos: $e");
-          }
-        } else {
-          print("❌ Característica WRITE no encontrada");
-        }
-        
-        break; // Solo necesitamos un servicio
+        break; // Solo necesitamos este servicio
       }
     }
+    
+    // ✅ RESULTADO DEL DESCUBRIMIENTO
+    print("📊 === RESUMEN DE DESCUBRIMIENTO ===");
+    print("Servicios totales: ${services.length}");
+    print("Servicio SOS encontrado: ${sosServiceFound ? '✅ SÍ' : '❌ NO'}");
+    print("Característica Write: ${writeCharacteristic != null ? '✅ SÍ' : '❌ NO'}");
+    print("Característica Notify: ${notifyCharacteristic != null ? '✅ SÍ' : '❌ NO'}");
     
     if (!sosServiceFound) {
-      print("❌ SERVICIO SOS NO ENCONTRADO");
-      print("Servicios disponibles:");
+      print("❌ PROBLEMA: Servicio SOS no encontrado");
+      print("💡 Posibles causas:");
+      print("   1. Dispositivo no tiene el servicio configurado");
+      print("   2. UUID del servicio es diferente");
+      print("   3. Dispositivo no está completamente conectado");
+      print("   4. Problema de firmware del dispositivo BLE");
+      
+      print("🔍 Servicios disponibles para análisis:");
       for (var service in services) {
-        print("  - ${service.uuid}");
+        print("   - ${service.uuid}");
       }
+      return;
     }
     
-    print("🔍 === FIN CONFIGURACIÓN PROTOCOLO ===");
+    if (writeCharacteristic == null || notifyCharacteristic == null) {
+      print("❌ PROBLEMA: Características necesarias no encontradas");
+      print("Write encontrada: ${writeCharacteristic != null}");
+      print("Notify encontrada: ${notifyCharacteristic != null}");
+      return;
+    }
+    
+    // ✅ CONFIGURAR NOTIFICACIONES
+    print("🔔 === CONFIGURANDO NOTIFICACIONES ===");
+    
+    try {
+      await notifyCharacteristic.setNotifyValue(true);
+      print("✅ Notificaciones activadas exitosamente");
+      
+      // ✅ CONFIGURAR LISTENER
+      notifyCharacteristic.value.listen((value) {
+        print("📡 === DATOS RECIBIDOS ===");
+        print("Timestamp: ${DateTime.now().toString().substring(11, 19)}");
+        print("Datos: $value");
+        print("Hex: ${value.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
+        
+        // ✅ ACTUALIZAR DEBUG
+        if (_updateSosDebug != null) {
+          _updateSosDebug!("datosRecibidos", value);
+        }
+        
+        // ✅ PROCESAR SEGÚN PROTOCOLO
+        if (value.isNotEmpty && value.length >= 4) {
+          if (value.length >= 5 && 
+              value[0] == 0xF3 && 
+              value[1] == 0x15 && 
+              value[2] == 0xF3) {
+            
+            print("🔘 COMANDO BOTÓN detectado");
+            int buttonState = value[4];
+            print("Estado: $buttonState (${buttonState == 1 ? 'PRESIONADO' : 'SOLTADO'})");
+            
+            if (buttonState == 1) {
+              print("🚨 ¡BOTÓN SOS PRESIONADO!");
+              
+              if (_updateSosDebug != null) {
+                _updateSosDebug!("botonPresionado", buttonState);
+              }
+              
+              if (!buttonPressed && panicTimer == null) {
+                buttonPressed = true;
+                panicTimer = Timer(const Duration(seconds: 3), () {
+                  if (buttonPressed) {
+                    print("🚨 ¡EJECUTANDO ALERTA SOS!");
+                    
+                    if (BleData.sosSoundEnabled) {
+                      CommunicationService().playSosSound();
+                    }
+                    CommunicationService().bringToForeground();  
+                    onSosActivated();
+                    CommunicationService().sendSosAlert(device.remoteId.toString());
+                    showPanicAlert(context, device.remoteId.toString());
+                    
+                    if (BleData.autoCall) {
+                      Future.delayed(const Duration(seconds: 1), () {
+                        CommunicationService().callSosNumber();
+                      });
+                    }
+                  }
+                  panicTimer = null;
+                });
+              }
+              
+            } else if (buttonState == 0) {
+              print("🔘 Botón soltado");
+              
+              if (_updateSosDebug != null) {
+                _updateSosDebug!("botonSoltado", buttonState);
+              }
+              
+              if (panicTimer != null && panicTimer!.isActive) {
+                panicTimer!.cancel();
+                panicTimer = null;
+              }
+              buttonPressed = false;
+            }
+          }
+        }
+      });
+      
+    } catch (e) {
+      print("❌ Error configurando notificaciones: $e");
+      return;
+    }
+    
+    // ✅ ENVIAR COMANDO INICIAL
+    print("📝 === ENVIANDO COMANDOS INICIALES ===");
+    
+    try {
+      // Comando batería: F3 16 F3
+      List<int> batteryCommand = [0xF3, 0x16, 0xF3];
+      await writeCharacteristic.write(batteryCommand);
+      print("✅ Comando batería enviado: ${batteryCommand.map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}");
+      
+      await Future.delayed(Duration(milliseconds: 500));
+      print("✅ Configuración completa");
+      
+    } catch (e) {
+      print("❌ Error enviando comandos: $e");
+    }
+    
+    print("🔍 === FIN DEBUG DESCUBRIMIENTO ===");
     
   } catch (e) {
-    print("❌ Error en discoverServices: $e");
+    print("❌ Error general en discoverServices: $e");
   }
 }
 
