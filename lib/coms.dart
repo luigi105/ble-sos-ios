@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'foreground.dart';
+import 'ios_platform_manager.dart';
+
 class CommunicationService {
   static const MethodChannel _channel = MethodChannel('com.miempresa.ble_sos_ap/call');
   static final AudioPlayer _audioPlayer = AudioPlayer();
