@@ -288,23 +288,29 @@ Future<void> fetchMacAddress(String imei) async {
 }
 
   // 🔹 Función para reproducir sonido de alerta SOS
-  Future<void> playSosSound() async {
-    if (!BleData.sosSoundEnabled) {
-      print("🔕 Sonido de alerta SOS deshabilitado, no se reproducirá.");
-      return;
-    }
-
-    try {
-      await _audioPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
-      print("🔊 Sonido de alerta SOS reproducido");
-    } catch (e) {
-      print("❌ Error al reproducir el sonido: $e");
-    }
+Future<void> playSosSound() async {
+  if (!BleData.sosSoundEnabled) {
+    print("🔕 Sonido de alerta SOS deshabilitado, no se reproducirá.");
+    return;
   }
+
+  try {
+    if (Platform.isIOS) {
+      // ✅ iOS: Usar método específico de background
+      await IOSPlatformManager.playSosAudioBackground();
+      print("🔊 Sonido SOS iOS reproducido (background compatible)");
+    } else {
+      // Android: método existente
+      await _audioPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+      print("🔊 Sonido SOS Android reproducido");
+    }
+  } catch (e) {
+    print("❌ Error al reproducir el sonido SOS: $e");
+  }
+}
   
  // Método para mostrar notificación cuando se pierde la conexión BLE
 Future<void> showBleDisconnectedNotification() async {
-  // Verificar si las notificaciones BLE están habilitadas
   if (!BleData.bleNotificationsEnabled) {
     print("🔕 Notificaciones BLE desactivadas, no se muestra notificación");
     return;
@@ -313,14 +319,19 @@ Future<void> showBleDisconnectedNotification() async {
   try {
     print("🔄 Mostrando notificación de desconexión BLE...");
     
-    // Para Android
     if (Platform.isAndroid) {
-      // Usar el canal nativo para mostrar la notificación
+      // Android: código existente
       await _notificationChannel.invokeMethod('showBleDisconnectedNotification');
+      print("✅ Notificación Android enviada al canal nativo");
     } 
-    // Para iOS (si es necesario)
     else if (Platform.isIOS) {
-      // Implementar para iOS si se requiere
+      // ✅ iOS: Notificación CRÍTICA que despierta dispositivo
+      await IOSPlatformManager.showCriticalBleNotification(
+        "⚠️ BLE Desconectado", 
+        "Dispositivo SOS desconectado. iOS intentará reconectar automáticamente. Verifique que esté encendido.",
+        isDisconnection: true
+      );
+      print("✅ Notificación BLE CRÍTICA iOS enviada (debería despertar pantalla)");
     }
     
     print("✅ Notificación de desconexión BLE mostrada.");
@@ -331,24 +342,27 @@ Future<void> showBleDisconnectedNotification() async {
 
 // Método para mostrar notificación cuando se recupera la conexión BLE
 Future<void> showBleConnectedNotification() async {
-  // Verificar si las notificaciones BLE están habilitadas
   if (!BleData.bleNotificationsEnabled) {
     print("🔕 Notificaciones BLE desactivadas, no se muestra notificación");
     return;
   }
   
   try {
-    print("🔄 Mostrando notificación de conexión BLE establecida...");
+    print("🔄 Mostrando notificación de conexión BLE...");
     
-    // Para Android
     if (Platform.isAndroid) {
-      // Usar el canal nativo para mostrar la notificación
+      // Android: código existente
       await _notificationChannel.invokeMethod('showBleConnectedNotification');
-      print("✅ Notificación enviada al canal nativo");
+      print("✅ Notificación Android enviada al canal nativo");
     } 
-    // Para iOS (si es necesario)
     else if (Platform.isIOS) {
-      // Implementar para iOS si se requiere
+      // ✅ iOS: Notificación PROMINENTE
+      await IOSPlatformManager.showCriticalBleNotification(
+        "🔵 BLE Conectado", 
+        "Dispositivo SOS conectado y funcionando correctamente",
+        isDisconnection: false
+      );
+      print("✅ Notificación BLE PROMINENTE iOS enviada");
     }
     
     print("✅ Notificación de conexión BLE mostrada.");

@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'; /
 import 'package:url_launcher/url_launcher.dart';
 import 'ble_data.dart';
 import 'coms.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 
 class IOSPlatformManager {
@@ -235,73 +236,68 @@ static Future<void> _setupSignificantLocationChanges() async {
   }
   
   // ✅ MANEJAR EMERGENCIA EN iOS (30 segundos disponibles)
-  static Future<void> _handleEmergencyIOS() async {
-    print("🚨 === MANEJO DE EMERGENCIA iOS - 30 segundos disponibles ===");
+static Future<void> _handleEmergencyIOS() async {
+  print("🚨 === MANEJO DE EMERGENCIA iOS - 30 segundos disponibles ===");
+  
+  try {
+    // 1. REPRODUCIR SONIDO SOS INMEDIATAMENTE
+    print("🔊 Reproduciendo sonido SOS...");
+    await playSosAudioBackground();
     
+    // 2. Obtener ubicación rápidamente (5-8 segundos)
+    Position? position;
     try {
-      // 1. Obtener ubicación rápidamente (5-10 segundos)
-      Position? position;
-      try {
-        position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        ).timeout(const Duration(seconds: 10));
-        print("📍 Ubicación obtenida: ${position.latitude}, ${position.longitude}");
-      } catch (e) {
-        print("⚠️ Error obteniendo ubicación: $e");
-        // Continuar sin ubicación
-      }
-      
-      // 2. Enviar alerta SOS al servidor (5-10 segundos)
-      try {
-        await CommunicationService().sendSosAlert(BleData.macAddress);
-        print("✅ Alerta SOS enviada al servidor");
-        
-        // Si tenemos ubicación, enviarla también
-        if (position != null) {
-          await _sendLocationToServer(position);
-          print("✅ Ubicación de emergencia enviada");
-        }
-      } catch (e) {
-        print("⚠️ Error enviando alerta: $e");
-      }
-      
-      // 3. Mostrar notificación local crítica
-      await showEmergencyNotification();
-      
-      // 4. Reproducir sonido si está habilitado
-      if (BleData.sosSoundEnabled) {
-        try {
-          await CommunicationService().playSosSound();
-          print("🔊 Sonido SOS reproducido");
-        } catch (e) {
-          print("⚠️ Error reproduciendo sonido: $e");
-        }
-      }
-      
-      // 5. Hacer llamada telefónica automática
-      if (BleData.autoCall && BleData.sosNumber != "UNKNOWN_SOS") {
-        try {
-          final Uri phoneUri = Uri.parse("tel://${BleData.sosNumber}");
-          if (await canLaunchUrl(phoneUri)) {
-            await launchUrl(phoneUri);
-            print("📞 Llamada SOS iniciada a ${BleData.sosNumber}");
-          }
-        } catch (e) {
-          print("⚠️ Error iniciando llamada: $e");
-        }
-      }
-      
-      print("✅ Emergencia iOS procesada exitosamente");
-      
+      position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 8)); // ✅ Reducido para dar más tiempo al audio
+      print("📍 Ubicación obtenida: ${position.latitude}, ${position.longitude}");
     } catch (e) {
-      print("❌ Error crítico procesando emergencia iOS: $e");
-      
-      // Fallback: Al menos mostrar notificación
-      await showEmergencyNotification(isError: true);
+      print("⚠️ Error obteniendo ubicación: $e");
     }
     
-    print("🚨 === FIN MANEJO DE EMERGENCIA iOS ===");
+    // 3. Enviar alerta SOS al servidor (5-8 segundos)
+    try {
+      await CommunicationService().sendSosAlert(BleData.macAddress);
+      print("✅ Alerta SOS enviada al servidor");
+      
+      if (position != null) {
+        await _sendLocationToServer(position);
+        print("✅ Ubicación de emergencia enviada");
+      }
+    } catch (e) {
+      print("⚠️ Error enviando alerta: $e");
+    }
+    
+    // 4. Mostrar notificación crítica adicional
+    await showCriticalBleNotification(
+      "🚨 SOS ACTIVADO", 
+      "Alerta enviada desde dispositivo BLE. Ubicación transmitida.",
+    );
+    
+    // 5. Hacer llamada telefónica automática
+    if (BleData.autoCall && BleData.sosNumber != "UNKNOWN_SOS") {
+      try {
+        final Uri phoneUri = Uri.parse("tel://${BleData.sosNumber}");
+        if (await canLaunchUrl(phoneUri)) {
+          await launchUrl(phoneUri);
+          print("📞 Llamada SOS iniciada a ${BleData.sosNumber}");
+        }
+      } catch (e) {
+        print("⚠️ Error iniciando llamada: $e");
+      }
+    }
+    
+    print("✅ Emergencia iOS procesada con audio SOS");
+    
+  } catch (e) {
+    print("❌ Error crítico procesando emergencia iOS: $e");
+    
+    // Fallback: Al menos reproducir sonido de emergencia
+    await playSosAudioBackground();
   }
+  
+  print("🚨 === FIN MANEJO DE EMERGENCIA iOS ===");
+}
   
   // ✅ MOSTRAR NOTIFICACIÓN DE EMERGENCIA
   static Future<void> showEmergencyNotification({bool isError = false}) async {
@@ -378,29 +374,135 @@ static Future<void> _setupSignificantLocationChanges() async {
 }
   
   // ✅ MOSTRAR NOTIFICACIÓN DE ESTADO
-  static Future<void> showStatusNotification(String message) async {
-    if (_localNotifications == null) return;
+static Future<void> showStatusNotification(String message) async {
+  if (_localNotifications == null) return;
+  
+  try {
+    // ✅ CONFIGURACIÓN MÁXIMA PROMINENCIA PARA BLE
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,          // ✅ Mostrar alerta
+      presentBadge: true,          // ✅ Mostrar badge
+      presentSound: true,          // ✅ Reproducir sonido
+      sound: 'default',            // ✅ Sonido por defecto del sistema
+      interruptionLevel: InterruptionLevel.timeSensitive, // ✅ CRÍTICO: Interrumpe DND
+      categoryIdentifier: 'BLE_CONNECTION',
+      threadIdentifier: 'ble_status',
+    );
     
+    const NotificationDetails details = NotificationDetails(iOS: iosDetails);
+    
+    await _localNotifications!.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000, // ID único
+      "🔵 Estado BLE",
+      message,
+      details,
+    );
+    
+    print("✅ Notificación prominente iOS mostrada: $message");
+    
+  } catch (e) {
+    print("❌ Error mostrando notificación prominente: $e");
+  }
+}
+
+static Future<void> showCriticalBleNotification(String title, String message, {bool isDisconnection = false}) async {
+  if (_localNotifications == null) return;
+  
+  try {
+    // ✅ CONFIGURACIÓN CRÍTICA - MÁXIMA PROMINENCIA
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'default',
+      interruptionLevel: InterruptionLevel.critical,  // ✅ CRÍTICO: Ignora DND y silencio
+      categoryIdentifier: 'BLE_CRITICAL',
+      threadIdentifier: 'ble_critical',
+      subtitle: 'Sistema BLE SOS',
+    );
+    
+    const NotificationDetails details = NotificationDetails(iOS: iosDetails);
+    
+    // ID específico para BLE crítico
+    int notificationId = isDisconnection ? 888 : 777;
+    
+    await _localNotifications!.show(
+      notificationId,
+      title,
+      message,
+      details,
+    );
+    
+    print("✅ Notificación BLE CRÍTICA mostrada: $title - $message");
+    
+    // ✅ INTENTAR DESPERTAR PANTALLA (si es posible)
     try {
+      print("📱 Notificación crítica debería encender pantalla automáticamente");
+    } catch (e) {
+      print("⚠️ No se pudo forzar despertar pantalla: $e");
+    }
+    
+  } catch (e) {
+    print("❌ Error mostrando notificación BLE crítica: $e");
+  }
+}
+
+// 1.4 - AGREGAR esta nueva función (después de showCriticalBleNotification):
+static Future<void> playSosAudioBackground() async {
+  try {
+    print("🔊 === REPRODUCIENDO AUDIO SOS EN BACKGROUND ===");
+    
+    // ✅ MÉTODO 1: Notificación con sonido personalizado
+    if (_localNotifications != null) {
+      // ✅ USAR ARCHIVO WAV para notificaciones iOS
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         presentAlert: true,
-        presentBadge: false,
-        presentSound: false,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'alerta_sos.wav',        // ✅ WAV para notificaciones
+        interruptionLevel: InterruptionLevel.critical,
+        categoryIdentifier: 'SOS_AUDIO',
+        threadIdentifier: 'sos_sound',
+        subtitle: '🚨 ALERTA SOS ACTIVADA',
       );
       
       const NotificationDetails details = NotificationDetails(iOS: iosDetails);
       
       await _localNotifications!.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        "BLE SOS Status",
-        message,
+        998,
+        "🚨 ALERTA SOS",
+        "Botón de pánico activado - Enviando ubicación y alerta",
         details,
       );
       
-    } catch (e) {
-      print("❌ Error mostrando notificación de estado: $e");
+      print("✅ Notificación SOS con audio WAV mostrada");
     }
+    
+    // ✅ MÉTODO 2: Usar audioplayers con MP3 si la app está activa
+    try {
+      final AudioPlayer audioPlayer = AudioPlayer();
+      
+      // ✅ USAR ARCHIVO MP3 para audioplayers
+      await audioPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+      print("✅ Audio SOS MP3 reproducido directamente con audioplayers");
+      
+      // Detener después de 3 segundos
+      Timer(Duration(seconds: 3), () {
+        audioPlayer.stop();
+        audioPlayer.dispose();
+      });
+      
+    } catch (audioError) {
+      print("⚠️ No se pudo reproducir audio MP3 directo: $audioError");
+      // La notificación con WAV debería funcionar como respaldo
+    }
+    
+  } catch (e) {
+    print("❌ Error reproduciendo audio SOS en background: $e");
   }
+}
+
+
   
   // ✅ LIMPIAR RECURSOS
   static Future<void> dispose() async {
