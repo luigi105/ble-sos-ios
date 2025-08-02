@@ -1764,161 +1764,128 @@ Widget _buildPortraitLayout(Size size) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ✅ DEBUG PERMANENTE MEJORADO - ESPECÍFICO PARA BLE
+              // ✅ DEBUG CONTAINER CORREGIDO
               Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10), // ✅ REDUCIDO para que quepa más info
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade300, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "🚨 DEBUG BLE COMPLETO",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13, // ✅ REDUCIDO
-                          color: Colors.red.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      
-                      // ✅ SECCIÓN 1: CONEXIÓN Y SERVICIOS
-                      Container(
-                        padding: const EdgeInsets.all(5), // ✅ REDUCIDO
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("🔍 DESCUBRIMIENTO:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                            Text("Conectado: ${BleData.isConnected ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                            Text("Servicios: $_totalServices", style: TextStyle(fontSize: 9)),
-                            Text("Estado: $_discoveryStatus", style: TextStyle(fontSize: 8)),
-                            if (_foundServiceUuids.isNotEmpty && _foundServiceUuids.length <= 3) ...[
-                              Text("UUIDs encontrados:", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-                              ...(_foundServiceUuids.map((uuid) => 
-                                Text("  ${uuid.substring(0, 8)}...", style: TextStyle(fontSize: 7))
-                              )),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      
-                      // ✅ SECCIÓN 2: SERVICIO SOS ESPECÍFICO
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: _sosServiceFound ? Colors.green.shade50 : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _sosServiceFound ? Colors.green.shade200 : Colors.orange.shade200
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("🎯 SERVICIO SOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                            Text("Servicio 6E40...CA9E: ${_sosServiceFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                            Text("Write 6E40...CA9E: ${_writeCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                            Text("Notify 6E40...CA9E: ${_notifyCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                            Text("Config: $_configurationStatus", style: TextStyle(fontSize: 8)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      
-                      // ✅ SECCIÓN 3: DATOS Y BOTÓN
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: _dataPacketsReceived > 0 ? Colors.teal.shade50 : Colors.yellow.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _dataPacketsReceived > 0 ? Colors.teal.shade200 : Colors.yellow.shade600
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("📡 COMUNICACIÓN:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                            Text("Paquetes: $_dataPacketsReceived", style: TextStyle(fontSize: 9)),
-                            Text("Botón: $_buttonStatus", style: TextStyle(fontSize: 9)),
-                            Text("Acción: $_lastButtonAction", style: TextStyle(fontSize: 9)),
-                            Text("Datos: $_lastBleData", style: TextStyle(fontSize: 7)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      
-                      // ✅ SECCIÓN 4: INFORMACIÓN BÁSICA
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.purple.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                            Text("${Platform.isIOS ? 'iOS' : 'Android'} | BT: $_bluetoothState", style: TextStyle(fontSize: 9)),
-                            Text("IMEI: ${BleData.imei.length > 10 ? BleData.imei.substring(0, 10) + '...' : BleData.imei}", style: TextStyle(fontSize: 9)),
-                            Text("Target: Holy-IOT", style: TextStyle(fontSize: 9)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      
-                      Text(
-                        "⏰ ${DateTime.now().toString().substring(11, 19)} | Escaneos: $_scanAttempts",
-                        style: TextStyle(fontSize: 8, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300, width: 2),
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "🚨 DEBUG BLE COMPLETO",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
                     const SizedBox(height: 6),
-                    // ✅ SECCIÓN 5: ESTADO DEL BOTÓN SOS
+                    
+                    // ✅ SECCIÓN 1: CONEXIÓN Y SERVICIOS
                     Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: _sosServiceFound ? Colors.teal.shade50 : Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _sosServiceFound ? Colors.teal.shade200 : Colors.red.shade200
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("🚨 BOTÓN SOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                            Text("Servicio SOS: ${_sosServiceFound ? '✅ OK' : '❌ NO'}", style: TextStyle(fontSize: 10)),
-                            Text("Datos recibidos: $_dataPacketsReceived", style: TextStyle(fontSize: 10)),
-                            Text("Estado botón: $_buttonStatus", style: TextStyle(fontSize: 10)),
-                            Text("Última acción: $_lastButtonAction", style: TextStyle(fontSize: 9)),
-                            Text("Últimos datos: $_lastBleData", style: TextStyle(fontSize: 8)),
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("🔍 DESCUBRIMIENTO:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          Text("Conectado: ${BleData.isConnected ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
+                          Text("Servicios: $_totalServices", style: TextStyle(fontSize: 9)),
+                          Text("Estado: $_discoveryStatus", style: TextStyle(fontSize: 8)),
+                          if (_foundServiceUuids.isNotEmpty && _foundServiceUuids.length <= 3) ...[
+                            Text("UUIDs encontrados:", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
+                            ...(_foundServiceUuids.map((uuid) => 
+                              Text("  ${uuid.substring(0, 8)}...", style: TextStyle(fontSize: 7))
+                            )),
                           ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    // ✅ SECCIÓN 2: SERVICIO SOS ESPECÍFICO
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: _sosServiceFound ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: _sosServiceFound ? Colors.green.shade200 : Colors.orange.shade200
                         ),
                       ),
-
-
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("🎯 SERVICIO SOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          Text("Servicio 6E40...CA9E: ${_sosServiceFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
+                          Text("Write 6E40...CA9E: ${_writeCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
+                          Text("Notify 6E40...CA9E: ${_notifyCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
+                          Text("Config: $_configurationStatus", style: TextStyle(fontSize: 8)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    // ✅ SECCIÓN 3: DATOS Y BOTÓN
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: _dataPacketsReceived > 0 ? Colors.teal.shade50 : Colors.yellow.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: _dataPacketsReceived > 0 ? Colors.teal.shade200 : Colors.yellow.shade600
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("📡 COMUNICACIÓN:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          Text("Paquetes: $_dataPacketsReceived", style: TextStyle(fontSize: 9)),
+                          Text("Botón: $_buttonStatus", style: TextStyle(fontSize: 9)),
+                          Text("Acción: $_lastButtonAction", style: TextStyle(fontSize: 9)),
+                          Text("Datos: $_lastBleData", style: TextStyle(fontSize: 7)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    // ✅ SECCIÓN 4: INFORMACIÓN BÁSICA
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          Text("${Platform.isIOS ? 'iOS' : 'Android'} | BT: $_bluetoothState", style: TextStyle(fontSize: 9)),
+                          Text("IMEI: ${BleData.imei.length > 10 ? BleData.imei.substring(0, 10) + '...' : BleData.imei}", style: TextStyle(fontSize: 9)),
+                          Text("Target: Holy-IOT", style: TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 3),
                     
                     Text(
-                      "⏰ ${DateTime.now().toString().substring(11, 19)} | $_scanDetails",
-                      style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                      "⏰ ${DateTime.now().toString().substring(11, 19)} | Escaneos: $_scanAttempts",
+                      style: TextStyle(fontSize: 8, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
-              ),
+              ), // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
               
               if (BleData.conBoton == 1) ...[
                 Container(
