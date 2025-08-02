@@ -427,9 +427,8 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
 
   
 
-// ✅ REEMPLAZAR la función _initializeiOS() en main.dart
+// ✅ FUNCIÓN COMPLETA _initializeiOS() CORREGIDA para main.dart:
 
-// ✅ NUEVO: Inicialización específica iOS COMPLETA
 Future<void> _initializeiOS() async {
   print("🍎 Inicializando estrategia iOS...");
   
@@ -531,19 +530,23 @@ Future<void> _initializeiOS() async {
     }
   });
   
-  // ✅ TIMER DE RECOVERY PARA DISCOVERY (NUEVO)
-  Timer.periodic(Duration(seconds: 8), (timer) {
+  // ✅ TIMER DE RECOVERY PARA DISCOVERY (CORREGIDO)
+  Timer.periodic(Duration(seconds: 8), (timer) async {
     if (BleData.isConnected && _totalServices == 0 && BleData.conBoton == 1) {
       print("🔧 iOS: Servicios=0 pero conectado. Forzando discovery...");
       
-      FlutterBluePlus.connectedDevices.then((devices) {
+      try {
+        // ✅ USAR AWAIT EN LUGAR DE .then()
+        List<BluetoothDevice> devices = await FlutterBluePlus.connectedDevices;
         bool deviceFound = false;
         
+        print("🔍 iOS: Verificando ${devices.length} dispositivos conectados...");
+        
         for (var device in devices) {
-          print("🔍 iOS: Verificando dispositivo conectado: ${device.platformName} (${device.remoteId})");
+          print("🔍 iOS: Dispositivo: '${device.platformName}' (${device.remoteId})");
           
           if (device.platformName.toLowerCase() == "holy-iot") {
-            print("📍 iOS: Encontrado Holy-IOT, ejecutando discoverServices...");
+            print("📍 iOS: ¡Encontrado Holy-IOT! Ejecutando discoverServices...");
             deviceFound = true;
             
             // Actualizar debug UI
@@ -566,25 +569,26 @@ Future<void> _initializeiOS() async {
         // Si no encontramos Holy-IOT en dispositivos conectados
         if (!deviceFound) {
           print("⚠️ iOS: No se encontró Holy-IOT en ${devices.length} dispositivos conectados");
+          print("📋 iOS: Dispositivos conectados encontrados:");
           for (var device in devices) {
-            print("   - ${device.platformName} (${device.remoteId})");
+            print("   - '${device.platformName}' (${device.remoteId})");
           }
           
           if (mounted) {
             setState(() {
-              _discoveryStatus = "Error: Holy-IOT no en lista de conectados";
+              _discoveryStatus = "Error: Holy-IOT no en ${devices.length} conectados";
             });
           }
         }
         
-      }).catchError((error) {
+      } catch (error) {
         print("❌ iOS: Error obteniendo dispositivos conectados: $error");
         if (mounted) {
           setState(() {
             _discoveryStatus = "Error obteniendo dispositivos: $error";
           });
         }
-      });
+      }
       
     } else if (_totalServices > 0) {
       // Si ya encontró servicios, cancelar el timer
@@ -597,6 +601,13 @@ Future<void> _initializeiOS() async {
       if (timer.isActive) {
         print("ℹ️ iOS: No está en modo BLE, cancelando timer de recovery");
         timer.cancel();
+      }
+    } else if (!BleData.isConnected) {
+      // Debug cuando no está conectado
+      if (mounted) {
+        setState(() {
+          _discoveryStatus = "Esperando conexión BLE...";
+        });
       }
     }
   });
