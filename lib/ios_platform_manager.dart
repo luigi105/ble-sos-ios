@@ -447,58 +447,94 @@ static Future<void> showCriticalBleNotification(String title, String message, {b
   }
 }
 
-// 1.4 - AGREGAR esta nueva función (después de showCriticalBleNotification):
+
 static Future<void> playSosAudioBackground() async {
   try {
     print("🔊 === REPRODUCIENDO AUDIO SOS EN BACKGROUND ===");
     
-    // ✅ MÉTODO 1: Notificación con sonido personalizado
-    if (_localNotifications != null) {
-      // ✅ USAR ARCHIVO WAV para notificaciones iOS
-      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        sound: 'alerta_sos.wav',        // ✅ WAV para notificaciones
-        interruptionLevel: InterruptionLevel.critical,
-        categoryIdentifier: 'SOS_AUDIO',
-        threadIdentifier: 'sos_sound',
-        subtitle: '🚨 ALERTA SOS ACTIVADA',
-      );
-      
-      const NotificationDetails details = NotificationDetails(iOS: iosDetails);
-      
-      await _localNotifications!.show(
-        998,
-        "🚨 ALERTA SOS",
-        "Botón de pánico activado - Enviando ubicación y alerta",
-        details,
-      );
-      
-      print("✅ Notificación SOS con audio WAV mostrada");
-    }
-    
-    // ✅ MÉTODO 2: Usar audioplayers con MP3 si la app está activa
+    // ✅ MÉTODO 1: Usar audioplayers con MP3 (más confiable para reproducción directa)
     try {
       final AudioPlayer audioPlayer = AudioPlayer();
       
-      // ✅ USAR ARCHIVO MP3 para audioplayers
+      print("🔊 Reproduciendo audio MP3 con audioplayers...");
       await audioPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
-      print("✅ Audio SOS MP3 reproducido directamente con audioplayers");
+      print("✅ Audio SOS MP3 reproducido exitosamente");
       
       // Detener después de 3 segundos
       Timer(Duration(seconds: 3), () {
         audioPlayer.stop();
         audioPlayer.dispose();
+        print("🔊 Audio SOS finalizado y recursos liberados");
       });
       
     } catch (audioError) {
-      print("⚠️ No se pudo reproducir audio MP3 directo: $audioError");
-      // La notificación con WAV debería funcionar como respaldo
+      print("⚠️ Error reproduciendo audio MP3: $audioError");
     }
     
+    // ✅ MÉTODO 2: Notificación con sonido WAV personalizado
+    if (_localNotifications != null) {
+      print("🔔 Enviando notificación SOS con sonido WAV personalizado...");
+      
+      try {
+        // ✅ USAR WAV PARA NOTIFICACIONES (ahora que está en pubspec.yaml)
+        const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'alerta_sos.wav', // ✅ AHORA SÍ USAR WAV para notificaciones
+          interruptionLevel: InterruptionLevel.critical,
+          categoryIdentifier: 'SOS_AUDIO',
+          threadIdentifier: 'sos_sound',
+          subtitle: '🚨 ALERTA SOS ACTIVADA',
+        );
+        
+        const NotificationDetails details = NotificationDetails(iOS: iosDetails);
+        
+        await _localNotifications!.show(
+          998,
+          "🚨 ALERTA SOS",
+          "Botón de pánico activado - Enviando ubicación y alerta",
+          details,
+        );
+        
+        print("✅ Notificación SOS con sonido WAV personalizado mostrada");
+        
+      } catch (notificationError) {
+        print("⚠️ Error en notificación SOS con WAV: $notificationError");
+        
+        // ✅ FALLBACK: Usar sonido por defecto si WAV falla
+        try {
+          print("🔄 Intentando con sonido por defecto...");
+          const DarwinNotificationDetails fallbackDetails = DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            sound: 'default',
+            interruptionLevel: InterruptionLevel.critical,
+            categoryIdentifier: 'SOS_AUDIO_FALLBACK',
+          );
+          
+          await _localNotifications!.show(
+            997,
+            "🚨 ALERTA SOS",
+            "Emergencia activada - Sistema de respaldo",
+            const NotificationDetails(iOS: fallbackDetails),
+          );
+          
+          print("✅ Notificación SOS con sonido por defecto (fallback) mostrada");
+          
+        } catch (fallbackError) {
+          print("❌ Error incluso con fallback: $fallbackError");
+        }
+      }
+    } else {
+      print("⚠️ Notificaciones locales no disponibles para SOS");
+    }
+    
+    print("🔊 === FIN REPRODUCCIÓN AUDIO SOS ===");
+    
   } catch (e) {
-    print("❌ Error reproduciendo audio SOS en background: $e");
+    print("❌ Error general reproduciendo audio SOS: $e");
   }
 }
 
