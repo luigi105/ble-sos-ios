@@ -340,11 +340,10 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   static const MethodChannel _lifecycleChannel = MethodChannel('com.miempresa.ble_sos_ap/lifecycle');
   Timer? _heartbeatTimer;
   int _heartbeatCount = 0;
-  int _scanAttempts = 0;
-  String _lastBleError = "Ninguno";
   String _bluetoothState = "Verificando...";
 
-    // ✅ NUEVAS VARIABLES PARA DEBUG DETALLADO
+  // ✅ VARIABLES DE DEBUG CONSOLIDADAS (sin duplicaciones)
+  int _scanAttempts = 0;
   int _devicesFound = 0;
   int _holyIotFound = 0;
   String _lastScanStatus = "Sin escanear";
@@ -352,14 +351,9 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   List<String> _foundDeviceMacs = [];
   bool _targetDeviceFound = false;
   String _scanDetails = "Esperando...";
-
-    String _lastBleData = "Sin datos";
-  String _buttonStatus = "Sin estado";
-  bool _sosServiceFound = false;
-  int _dataPacketsReceived = 0;
-  String _lastButtonAction = "Ninguna";
-
-    int _totalServices = 0;
+  
+  // ✅ VARIABLES DE DEBUG DE SERVICIOS
+  int _totalServices = 0;
   bool _sosServiceFound = false;
   bool _writeCharFound = false;
   bool _notifyCharFound = false;
@@ -371,11 +365,57 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   String _lastButtonAction = "Ninguna";
   String _configurationStatus = "Sin configurar";
 
-  @override
+   @override
   void initState() {
     super.initState();
     _isMounted = true;
     WidgetsBinding.instance.addObserver(this);
+
+    // ✅ CONFIGURAR CALLBACK PARA DEBUG SOS
+    connect_helper.setSosDebugCallback((String action, dynamic data) {
+      if (!mounted) return;
+      
+      setState(() {
+        switch (action) {
+          case "discoveryStart":
+            _discoveryStatus = data as String;
+            break;
+          case "servicesFound":
+            Map<String, dynamic> info = data as Map<String, dynamic>;
+            _totalServices = info['total'] as int;
+            _foundServiceUuids = (info['uuids'] as List).cast<String>();
+            _discoveryStatus = "Servicios encontrados: $_totalServices";
+            break;
+          case "sosServiceFound":
+            _sosServiceFound = data as bool;
+            break;
+          case "writeCharFound":
+            _writeCharFound = data as bool;
+            break;
+          case "notifyCharFound":
+            _notifyCharFound = data as bool;
+            break;
+          case "configStatus":
+            _configurationStatus = data as String;
+            break;
+          case "dataReceived":
+            List<int> rawData = data as List<int>;
+            _dataPacketsReceived++;
+            _lastBleData = rawData.length > 5 
+                ? "${rawData.take(5).join(',')}.." 
+                : rawData.join(',');
+            break;
+          case "buttonPressed":
+            _buttonStatus = "PRESIONADO";
+            _lastButtonAction = "Presionado ${DateTime.now().toString().substring(11, 19)}";
+            break;
+          case "buttonReleased":
+            _buttonStatus = "SOLTADO";
+            _lastButtonAction = "Soltado ${DateTime.now().toString().substring(11, 19)}";
+            break;
+        }
+      });
+    });
 
     // ✅ ESTRATEGIA ESPECÍFICA POR PLATAFORMA
     if (Platform.isIOS) {
@@ -383,52 +423,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     } else {
       _initializeAndroid();
     }
-
-connect_helper.setSosDebugCallback((String action, dynamic data) {
-  if (!mounted) return;
-  
-  setState(() {
-    switch (action) {
-      case "discoveryStart":
-        _discoveryStatus = data as String;
-        break;
-      case "servicesFound":
-        Map<String, dynamic> info = data as Map<String, dynamic>;
-        _totalServices = info['total'] as int;
-        _foundServiceUuids = (info['uuids'] as List).cast<String>();
-        _discoveryStatus = "Servicios encontrados: $_totalServices";
-        break;
-      case "sosServiceFound":
-        _sosServiceFound = data as bool;
-        break;
-      case "writeCharFound":
-        _writeCharFound = data as bool;
-        break;
-      case "notifyCharFound":
-        _notifyCharFound = data as bool;
-        break;
-      case "configStatus":
-        _configurationStatus = data as String;
-        break;
-      case "dataReceived":
-        List<int> rawData = data as List<int>;
-        _dataPacketsReceived++;
-        _lastBleData = rawData.length > 5 
-            ? "${rawData.take(5).join(',')}.." 
-            : rawData.join(',');
-        break;
-      case "buttonPressed":
-        _buttonStatus = "PRESIONADO";
-        _lastButtonAction = "Presionado ${DateTime.now().toString().substring(11, 19)}";
-        break;
-      case "buttonReleased":
-        _buttonStatus = "SOLTADO";
-        _lastButtonAction = "Soltado ${DateTime.now().toString().substring(11, 19)}";
-        break;
-    }
-  });
-});
-}
+  }
 
   
 
