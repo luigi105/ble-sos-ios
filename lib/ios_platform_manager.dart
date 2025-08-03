@@ -407,44 +407,92 @@ static Future<void> showStatusNotification(String message) async {
 }
 
 static Future<void> showCriticalBleNotification(String title, String message, {bool isDisconnection = false}) async {
-  if (_localNotifications == null) return;
+  if (_localNotifications == null) {
+    print("❌ Notificaciones locales no inicializadas para BLE crítica");
+    await _setupLocalNotifications();
+    if (_localNotifications == null) {
+      print("❌ No se pudo inicializar notificaciones para BLE crítica");
+      return;
+    }
+  }
   
   try {
-    // ✅ CONFIGURACIÓN CRÍTICA - MÁXIMA PROMINENCIA
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'default',
-      interruptionLevel: InterruptionLevel.critical,  // ✅ CRÍTICO: Ignora DND y silencio
-      categoryIdentifier: 'BLE_CRITICAL',
-      threadIdentifier: 'ble_critical',
-      subtitle: 'Sistema BLE SOS',
-    );
+    print("🔔 === PREPARANDO NOTIFICACIÓN BLE CRÍTICA ===");
+    print("   Título: $title");
+    print("   Mensaje: $message");
+    print("   Es desconexión: $isDisconnection");
     
-    const NotificationDetails details = NotificationDetails(iOS: iosDetails);
-    
-    // ID específico para BLE crítico
+    // ✅ ID específico para BLE crítico
     int notificationId = isDisconnection ? 888 : 777;
     
-    await _localNotifications!.show(
-      notificationId,
-      title,
-      message,
-      details,
-    );
+    print("🔔 Enviando notificación con ID: $notificationId");
     
-    print("✅ Notificación BLE CRÍTICA mostrada: $title - $message");
+    // ✅ PROBAR MÚLTIPLES CONFIGURACIONES HASTA QUE UNA FUNCIONE
+    List<DarwinNotificationDetails> configsToTry = [
+      // Config 1: Crítica completa
+      const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+        interruptionLevel: InterruptionLevel.critical,
+        categoryIdentifier: 'BLE_CRITICAL',
+        threadIdentifier: 'ble_critical',
+        subtitle: 'Sistema BLE SOS',
+      ),
+      // Config 2: Time-sensitive como respaldo
+      const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+        interruptionLevel: InterruptionLevel.timeSensitive,
+        categoryIdentifier: 'BLE_IMPORTANT',
+      ),
+      // Config 3: Activa como último recurso
+      const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+        interruptionLevel: InterruptionLevel.active,
+        categoryIdentifier: 'BLE_BASIC',
+      ),
+    ];
     
-    // ✅ INTENTAR DESPERTAR PANTALLA (si es posible)
-    try {
-      print("📱 Notificación crítica debería encender pantalla automáticamente");
-    } catch (e) {
-      print("⚠️ No se pudo forzar despertar pantalla: $e");
+    bool notificationSent = false;
+    
+    for (int i = 0; i < configsToTry.length; i++) {
+      try {
+        print("🔄 Intentando configuración ${i + 1}/3...");
+        
+        await _localNotifications!.show(
+          notificationId + i, // ID ligeramente diferente para cada intento
+          title,
+          message,
+          NotificationDetails(iOS: configsToTry[i]),
+        );
+        
+        print("✅ Notificación BLE enviada exitosamente con configuración ${i + 1}");
+        notificationSent = true;
+        break; // Salir del loop si tiene éxito
+        
+      } catch (e) {
+        print("❌ Error con configuración ${i + 1}: $e");
+        if (i == configsToTry.length - 1) {
+          print("❌ Todas las configuraciones fallaron");
+        }
+      }
+    }
+    
+    if (notificationSent) {
+      print("✅ Notificación BLE CRÍTICA enviada exitosamente");
+    } else {
+      print("❌ FALLÓ: No se pudo enviar notificación BLE con ninguna configuración");
     }
     
   } catch (e) {
-    print("❌ Error mostrando notificación BLE crítica: $e");
+    print("❌ Error crítico mostrando notificación BLE: $e");
   }
 }
 
@@ -610,34 +658,141 @@ static Future<bool> forceRequestNotificationPermissions() async {
 
 static Future<String> checkCurrentPermissionStatus() async {
   try {
-    // Método 1: permission_handler
-    bool notificationGranted = await Permission.notification.isGranted;
+    print("🔍 === VERIFICANDO PERMISOS DETALLADAMENTE ===");
     
-    // Método 2: flutter_local_notifications
-    String flutterLocalStatus = "No verificado";
-    if (_localNotifications != null) {
-      final iosImpl = _localNotifications!
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-      
-      if (iosImpl != null) {
-        try {
-          // ✅ USAR getNotificationAppLaunchDetails en lugar de checkPermissions
-          final launchDetails = await _localNotifications!.getNotificationAppLaunchDetails();
-          flutterLocalStatus = launchDetails != null ? "Inicializado" : "No inicializado";
-        } catch (e) {
-          flutterLocalStatus = "Error: $e";
-        }
-      }
+    // ✅ MÉTODO REAL: Intentar mostrar notificación y ver si funciona
+    if (_localNotifications == null) {
+      await _setupLocalNotifications();
     }
     
-    String status = "permission_handler: ${notificationGranted ? 'Concedido' : 'Denegado'} | flutter_local: $flutterLocalStatus";
-    print("📱 Estado completo de permisos: $status");
+    final iosImpl = _localNotifications!
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
     
-    return notificationGranted ? "Concedido" : "Denegado";
+    if (iosImpl != null) {
+      try {
+        // ✅ PROBAR NOTIFICACIÓN CRÍTICA REAL
+        print("📱 Probando notificación crítica para verificar permisos...");
+        
+        await _localNotifications!.show(
+          888, // ID de prueba específico
+          "🧪 Verificación de Permisos",
+          "Si ves esta notificación, los permisos están OK",
+          const NotificationDetails(
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+              interruptionLevel: InterruptionLevel.critical,
+              categoryIdentifier: 'PERMISSION_TEST',
+            ),
+          ),
+        );
+        
+        print("✅ Notificación de verificación enviada sin errores");
+        
+        // ✅ Si llegamos aquí sin excepción, los permisos están OK
+        return "Concedido (Verificado)";
+        
+      } catch (e) {
+        print("❌ Error enviando notificación de verificación: $e");
+        
+        // ✅ Si hay error, los permisos no están bien configurados
+        return "Denegado (Error: $e)";
+      }
+    } else {
+      print("❌ No se pudo obtener implementación iOS");
+      return "Error (No iOS impl)";
+    }
     
   } catch (e) {
-    print("❌ Error verificando permisos: $e");
+    print("❌ Error general verificando permisos: $e");
     return "Error: $e";
+  }
+}
+
+static Future<void> debugNotificationSettings() async {
+  try {
+    print("🔍 === DEBUG DETALLADO DE NOTIFICACIONES ===");
+    
+    if (_localNotifications == null) {
+      print("❌ _localNotifications es null");
+      return;
+    }
+    
+    final iosImpl = _localNotifications!
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
+    if (iosImpl == null) {
+      print("❌ iosImpl es null");
+      return;
+    }
+    
+    // ✅ PROBAR DIFERENTES TIPOS DE NOTIFICACIONES
+    print("📱 Probando notificación básica...");
+    try {
+      await _localNotifications!.show(
+        777,
+        "🔵 Prueba Básica",
+        "Notificación básica de prueba",
+        const NotificationDetails(
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: false,
+            interruptionLevel: InterruptionLevel.passive,
+          ),
+        ),
+      );
+      print("✅ Notificación básica enviada OK");
+    } catch (e) {
+      print("❌ Error notificación básica: $e");
+    }
+    
+    await Future.delayed(Duration(seconds: 2));
+    
+    print("📱 Probando notificación crítica...");
+    try {
+      await _localNotifications!.show(
+        776,
+        "🚨 Prueba Crítica",
+        "Notificación crítica de prueba",
+        const NotificationDetails(
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+            interruptionLevel: InterruptionLevel.critical,
+          ),
+        ),
+      );
+      print("✅ Notificación crítica enviada OK");
+    } catch (e) {
+      print("❌ Error notificación crítica: $e");
+    }
+    
+    await Future.delayed(Duration(seconds: 2));
+    
+    print("📱 Probando notificación time-sensitive...");
+    try {
+      await _localNotifications!.show(
+        775,
+        "⏰ Prueba Time-Sensitive",
+        "Notificación time-sensitive de prueba",
+        const NotificationDetails(
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+            interruptionLevel: InterruptionLevel.timeSensitive,
+          ),
+        ),
+      );
+      print("✅ Notificación time-sensitive enviada OK");
+    } catch (e) {
+      print("❌ Error notificación time-sensitive: $e");
+    }
+    
+    print("🔍 === FIN DEBUG DETALLADO ===");
+    
+  } catch (e) {
+    print("❌ Error en debug detallado: $e");
   }
 }
 

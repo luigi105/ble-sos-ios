@@ -205,6 +205,14 @@ Widget build(BuildContext context) {
       backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
       iconTheme: const IconThemeData(color: Colors.white),
       actions: [
+        // ✅ BOTÓN PARA DEBUG DETALLADO (NUEVO)
+        if (Platform.isIOS) 
+          IconButton(
+            icon: Icon(Icons.bug_report, color: Colors.white),
+            onPressed: () async {
+              await _debugNotificationsDetailed();
+            },
+          ),
         // ✅ BOTÓN PARA FORZAR PERMISOS
         if (Platform.isIOS) 
           IconButton(
@@ -870,5 +878,38 @@ Widget build(BuildContext context) {
   }
 }
 
+Future<void> _debugNotificationsDetailed() async {
+  try {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔍 Ejecutando debug detallado..."),
+        backgroundColor: Colors.purple,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    // ✅ EJECUTAR DEBUG DETALLADO
+    await IOSPlatformManager.debugNotificationSettings();
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("✅ Debug completado. Revisa si aparecieron 3 notificaciones de prueba."),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("❌ Error en debug: $e"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+}
 
 }
