@@ -558,27 +558,42 @@ static Future<bool> forceRequestNotificationPermissions() async {
         badge: true,
         sound: true,
         critical: true, // ✅ CRÍTICO para emergencias
-        provisional: true, // ✅ Para notificaciones no intrusivas
       );
       
       print("📱 Resultado de solicitud: $result");
       
-      // ✅ VERIFICAR ESTADO DESPUÉS DE SOLICITAR
-      final settings = await iosImpl.checkPermissions();
-      print("📱 Estado después de solicitar:");
-      print("   - Alert: ${settings.alert}");
-      print("   - Badge: ${settings.badge}");
-      print("   - Sound: ${settings.sound}");
-      print("   - Critical: ${settings.criticalAlert}");
-      print("   - Provisional: ${settings.provisional}");
+      // ✅ VERIFICAR USANDO permission_handler EN LUGAR DE checkPermissions()
+      bool notificationPermission = await Permission.notification.isGranted;
+      print("📱 Estado de permisos de notificación: $notificationPermission");
       
-      bool allGranted = settings.alert == true && 
-                       settings.sound == true && 
-                       settings.criticalAlert == true;
-      
-      print("📱 ¿Todos los permisos críticos concedidos? $allGranted");
-      
-      return allGranted;
+      // ✅ PROBAR NOTIFICACIÓN INMEDIATAMENTE
+      if (result == true || notificationPermission) {
+        print("✅ Permisos concedidos, probando notificación...");
+        
+        try {
+          await _localNotifications!.show(
+            999,
+            "🎉 PERMISOS CONCEDIDOS",
+            "Las notificaciones están funcionando correctamente",
+            const NotificationDetails(
+              iOS: DarwinNotificationDetails(
+                presentAlert: true,
+                presentBadge: true,
+                presentSound: true,
+                interruptionLevel: InterruptionLevel.critical,
+              ),
+            ),
+          );
+          print("✅ Notificación de prueba enviada");
+          return true;
+        } catch (e) {
+          print("⚠️ Error enviando notificación de prueba: $e");
+          return false;
+        }
+      } else {
+        print("❌ Permisos no concedidos");
+        return false;
+      }
       
     } else {
       print("❌ No se pudo obtener implementación iOS");
@@ -591,6 +606,39 @@ static Future<bool> forceRequestNotificationPermissions() async {
   }
 }
 
+
+static Future<String> checkCurrentPermissionStatus() async {
+  try {
+    // Método 1: permission_handler
+    bool notificationGranted = await Permission.notification.isGranted;
+    
+    // Método 2: flutter_local_notifications
+    String flutterLocalStatus = "No verificado";
+    if (_localNotifications != null) {
+      final iosImpl = _localNotifications!
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      
+      if (iosImpl != null) {
+        try {
+          // ✅ USAR getNotificationAppLaunchDetails en lugar de checkPermissions
+          final launchDetails = await _localNotifications!.getNotificationAppLaunchDetails();
+          flutterLocalStatus = launchDetails != null ? "Inicializado" : "No inicializado";
+        } catch (e) {
+          flutterLocalStatus = "Error: $e";
+        }
+      }
+    }
+    
+    String status = "permission_handler: ${notificationGranted ? 'Concedido' : 'Denegado'} | flutter_local: $flutterLocalStatus";
+    print("📱 Estado completo de permisos: $status");
+    
+    return notificationGranted ? "Concedido" : "Denegado";
+    
+  } catch (e) {
+    print("❌ Error verificando permisos: $e");
+    return "Error: $e";
+  }
+}
 
   
   // ✅ LIMPIAR RECURSOS

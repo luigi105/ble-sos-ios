@@ -645,46 +645,48 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
 
 
   // ✅ NUEVA FUNCIÓN: Debug paso a paso del sistema de notificaciones
-  Future<void> _debugNotificationSystemStepByStep() async {
-    if (mounted) setState(() => _notificationDebugStatus = "Iniciando debugging...");
+ Future<void> _debugNotificationSystemStepByStep() async {
+  if (mounted) setState(() => _notificationDebugStatus = "Iniciando debugging...");
+  
+  try {
+    // Paso 1: Verificar plataforma
+    if (mounted) setState(() => _notificationDebugStatus = "Verificando plataforma iOS...");
+    await Future.delayed(Duration(seconds: 1));
     
-    try {
-      // Paso 1: Verificar plataforma
-      if (mounted) setState(() => _notificationDebugStatus = "Verificando plataforma iOS...");
-      await Future.delayed(Duration(seconds: 1));
-      
-      if (!Platform.isIOS) {
-        if (mounted) setState(() => _notificationDebugStatus = "ERROR: No es iOS");
-        return;
-      }
-      
-      // Paso 2: Verificar permisos básicos
-      if (mounted) setState(() => _notificationDebugStatus = "Verificando permisos...");
-      bool notificationGranted = await Permission.notification.isGranted;
-      if (mounted) setState(() => _notificationPermissionStatus = notificationGranted ? "Concedido" : "Denegado");
-      
-      // Paso 3: Intentar inicializar IOSPlatformManager
-      if (mounted) setState(() => _notificationDebugStatus = "Inicializando IOSPlatformManager...");
-      try {
-        await IOSPlatformManager.initialize();
-        if (mounted) setState(() => _iosManagerStatus = "Inicializado OK");
-      } catch (e) {
-        if (mounted) setState(() => _iosManagerStatus = "Error: $e");
-      }
-      
-      // Paso 4: Verificar notificaciones locales
-      if (mounted) setState(() => _notificationDebugStatus = "Verificando notificaciones locales...");
-      await _checkLocalNotificationStatus();
-      
-      if (mounted) setState(() => _notificationDebugStatus = "Debugging completado");
-      
-    } catch (e) {
-      if (mounted) setState(() {
-        _notificationDebugStatus = "Error en debugging: $e";
-        _lastNotificationError = e.toString();
-      });
+    if (!Platform.isIOS) {
+      if (mounted) setState(() => _notificationDebugStatus = "ERROR: No es iOS");
+      return;
     }
+    
+    // Paso 2: Verificar permisos básicos CORREGIDO
+    if (mounted) setState(() => _notificationDebugStatus = "Verificando permisos...");
+    
+    // ✅ USAR LA NUEVA FUNCIÓN
+    String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
+    if (mounted) setState(() => _notificationPermissionStatus = permissionStatus);
+    
+    // Paso 3: Intentar inicializar IOSPlatformManager
+    if (mounted) setState(() => _notificationDebugStatus = "Inicializando IOSPlatformManager...");
+    try {
+      await IOSPlatformManager.initialize();
+      if (mounted) setState(() => _iosManagerStatus = "Inicializado OK");
+    } catch (e) {
+      if (mounted) setState(() => _iosManagerStatus = "Error: $e");
+    }
+    
+    // Paso 4: Verificar notificaciones locales
+    if (mounted) setState(() => _notificationDebugStatus = "Verificando notificaciones locales...");
+    await _checkLocalNotificationStatus();
+    
+    if (mounted) setState(() => _notificationDebugStatus = "Debugging completado");
+    
+  } catch (e) {
+    if (mounted) setState(() {
+      _notificationDebugStatus = "Error en debugging: $e";
+      _lastNotificationError = e.toString();
+    });
   }
+}
 
   // ✅ NUEVA FUNCIÓN: Verificar estado de notificaciones locales
   Future<void> _checkLocalNotificationStatus() async {
