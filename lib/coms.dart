@@ -315,152 +315,50 @@ Future<void> playSosSound() async {
 
 Future<void> showBleDisconnectedNotification() async {
   if (!BleData.bleNotificationsEnabled) {
-    print("🔕 Notificaciones BLE desactivadas, no se muestra notificación");
+    print("🔕 Notificaciones BLE desactivadas");
     return;
   }
   
   try {
-    print("🔄 Mostrando notificación de desconexión BLE...");
+    print("⚠️ Procesando desconexión BLE...");
     
     if (Platform.isAndroid) {
-      // Android: código existente
       await _notificationChannel.invokeMethod('showBleDisconnectedNotification');
-      print("✅ Notificación Android enviada al canal nativo");
     } 
     else if (Platform.isIOS) {
-      print("🍎 === PROCESANDO DESCONEXIÓN BLE iOS ===");
-      
-      // ✅ PASO 1: Esperar estabilización
-      await Future.delayed(Duration(milliseconds: 500));
-      
-      // ✅ PASO 2: Sonido PRIMERO (más confiable)
+      // ✅ Sonido primero
       if (BleData.sosSoundEnabled) {
-        try {
-          print("🔊 Reproduciendo sonido de desconexión...");
-          final AudioPlayer alertPlayer = AudioPlayer();
-          await alertPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
-          print("✅ Sonido de desconexión reproducido");
-          
-          // Detener después de 2 segundos
-          Timer(Duration(seconds: 2), () {
-            alertPlayer.stop();
-            alertPlayer.dispose();
-          });
-        } catch (e) {
-          print("⚠️ Error reproduciendo sonido de desconexión: $e");
-        }
+        final AudioPlayer alertPlayer = AudioPlayer();
+        await alertPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+        Timer(Duration(seconds: 2), () {
+          alertPlayer.stop();
+          alertPlayer.dispose();
+        });
       }
       
-      // ✅ PASO 3: Notificación DESPUÉS del sonido (con delay)
+      // ✅ Notificación después
       await Future.delayed(Duration(milliseconds: 300));
-      
-      try {
-        print("🔔 Enviando notificación de desconexión...");
-        await IOSPlatformManager.showCriticalBleNotification(
-          "⚠️ BLE Desconectado", 
-          "Dispositivo SOS desconectado. iOS intentará reconectar automáticamente.",
-          isDisconnection: true
-        );
-        print("✅ Notificación de desconexión enviada");
-      } catch (e) {
-        print("❌ Error enviando notificación de desconexión: $e");
-        
-        // ✅ FALLBACK: Usar sendNotificationWithRetries
-        try {
-          print("🔄 Intentando con método de reintentos...");
-          bool success = await IOSPlatformManager.sendNotificationWithRetries(
-            "⚠️ BLE Desconectado",
-            "Dispositivo desconectado - Reintentando reconexión"
-          );
-          print("Resultado de reintentos: $success");
-        } catch (retryError) {
-          print("❌ Error incluso con reintentos: $retryError");
-        }
-      }
-      
-      print("🍎 === FIN PROCESANDO DESCONEXIÓN BLE iOS ===");
+      await IOSPlatformManager.showCriticalBleNotification(
+        "⚠️ BLE Desconectado", 
+        "Dispositivo SOS desconectado. Verifica que esté encendido y cerca.",
+        isDisconnection: true
+      );
     }
     
-    print("✅ Proceso de notificación de desconexión BLE completado.");
   } catch (e) {
-    print("❌ Error general al mostrar notificación de desconexión BLE: $e");
+    print("❌ Error notificación desconexión: $e");
   }
 }
 
 // ✅ FUNCIÓN CORREGIDA: showBleConnectedNotification() con timing
+/*
 Future<void> showBleConnectedNotification() async {
-  if (!BleData.bleNotificationsEnabled) {
-    print("🔕 Notificaciones BLE desactivadas, no se muestra notificación");
-    return;
-  }
-  
-  try {
-    print("🔄 Mostrando notificación de conexión BLE...");
-    
-    if (Platform.isAndroid) {
-      // Android: código existente
-      await _notificationChannel.invokeMethod('showBleConnectedNotification');
-      print("✅ Notificación Android enviada al canal nativo");
-    } 
-    else if (Platform.isIOS) {
-      print("🍎 === PROCESANDO CONEXIÓN BLE iOS ===");
-      
-      // ✅ PASO 1: Esperar estabilización
-      await Future.delayed(Duration(milliseconds: 500));
-      
-      // ✅ PASO 2: Sonido PRIMERO (más corto para conexión)
-      if (BleData.sosSoundEnabled) {
-        try {
-          print("🔊 Reproduciendo sonido de conexión...");
-          final AudioPlayer connectPlayer = AudioPlayer();
-          await connectPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
-          print("✅ Sonido de conexión reproducido");
-          
-          // Detener después de 1 segundo (más corto para conexión)
-          Timer(Duration(seconds: 1), () {
-            connectPlayer.stop();
-            connectPlayer.dispose();
-          });
-        } catch (e) {
-          print("⚠️ Error reproduciendo sonido de conexión: $e");
-        }
-      }
-      
-      // ✅ PASO 3: Notificación DESPUÉS del sonido (con delay)
-      await Future.delayed(Duration(milliseconds: 300));
-      
-      try {
-        print("🔔 Enviando notificación de conexión...");
-        await IOSPlatformManager.showCriticalBleNotification(
-          "🔵 BLE Conectado", 
-          "Dispositivo SOS conectado y funcionando correctamente",
-          isDisconnection: false
-        );
-        print("✅ Notificación de conexión enviada");
-      } catch (e) {
-        print("❌ Error enviando notificación de conexión: $e");
-        
-        // ✅ FALLBACK: Usar sendNotificationWithRetries
-        try {
-          print("🔄 Intentando con método de reintentos...");
-          bool success = await IOSPlatformManager.sendNotificationWithRetries(
-            "🔵 BLE Conectado",
-            "Dispositivo conectado y operativo"
-          );
-          print("Resultado de reintentos: $success");
-        } catch (retryError) {
-          print("❌ Error incluso con reintentos: $retryError");
-        }
-      }
-      
-      print("🍎 === FIN PROCESANDO CONEXIÓN BLE iOS ===");
-    }
-    
-    print("✅ Proceso de notificación de conexión BLE completado.");
-  } catch (e) {
-    print("❌ Error general al mostrar notificación de conexión BLE: $e");
-  }
+  // ✅ COMENTADO: Notificación de conexión no necesaria
+  // Solo mantener para referencia futura
+  print("🔕 Notificación de conexión deshabilitada - Solo desconexión es importante");
+  return;
 }
+*/
 
 
 

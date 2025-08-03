@@ -1091,6 +1091,9 @@ Future<void> _initializeAndroid() async {
     print("🚨 === INICIO CIERRE DE EMERGENCIA ===");
     
     try {
+       if (Platform.isIOS) {
+      await IOSPlatformManager.dispose();
+    }
       // 1. Cancelar TODOS los timers inmediatamente
       panicTimer?.cancel();
       updateTimer?.cancel();
@@ -1229,8 +1232,8 @@ Future<void> _initializeAndroid() async {
     print("💓 Sistema HEARTBEAT detenido");
     
     if (Platform.isIOS) {
-      // TODO: IOSPlatformManager.dispose();
-      print("✅ Dispose iOS completado");
+    IOSPlatformManager.dispose();
+    print("✅ Dispose iOS completado con limpieza de notificación persistente");
     } else {
       // Solo limpiar si NO es cierre permanente (ya se limpió en emergencyShutdown)
       if (!_appClosingPermanently) {

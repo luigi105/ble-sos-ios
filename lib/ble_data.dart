@@ -324,58 +324,37 @@ static void update({
     bool stateChanged = isConnected != connectionStatus;
     isConnected = connectionStatus;
     
-    if (stateChanged) {
-      print("🔄 === CAMBIO DE ESTADO BLE DETECTADO ===");
-      print("   Estado anterior: $prevConnectionState");
-      print("   Estado nuevo: $isConnected");
-      print("   ¿Notificaciones habilitadas?: $bleNotificationsEnabled");
-      print("   conBoton: $conBoton");
-      
-      if (isConnected) {
-        // Si la conexión se restablece, reiniciar el contador de reconexión
-        reconnectionAttemptCount = 0;
-        print("✅ Contador de reconexión reseteado a 0 al establecer conexión");
+  if (stateChanged) {
+        print("🔄 Cambio de estado BLE: $prevConnectionState -> $isConnected");
         
-        // Caso especial: Primera conexión BLE después de iniciar la app
-        if (firstBleConnection && connectionNotificationsEnabled && conBoton == 1) {
-          print("🔔 Primera conexión BLE detectada. Mostrando notificación inicial.");
-          print("🔔 EJECUTANDO: CommunicationService().showBleConnectedNotification()");
-          CommunicationService().showBleConnectedNotification();
-          firstBleConnection = false;
-          print("✅ Notificación de conexión BLE inicial mostrada");
-        }
-        // Caso normal: Reconexión después de una notificación de desconexión
-        else if (connectionNotificationsEnabled && conBoton == 1 && bleDisconnectionNotificationShown) {
-          print("🔔 Reconexión BLE detectada después de desconexión. Mostrando notificación.");
-          print("🔔 EJECUTANDO: CommunicationService().showBleConnectedNotification()");
-          CommunicationService().showBleConnectedNotification();
-          // Reiniciar la bandera después de mostrar la notificación de reconexión
-          bleDisconnectionNotificationShown = false;
-          print("✅ Notificación de reconexión BLE mostrada y bandera reiniciada");
-        }
-        print("Conexión BLE: ESTABLECIDA ✅ | Contador de intentos de reconexión reiniciado: 0");
-      } else {
-        // ✅ DESCONEXIÓN DETECTADA
-        print("❌ DESCONEXIÓN BLE DETECTADA");
-        print("   ¿Deberíamos mostrar notificación de desconexión?");
-        print("   - connectionNotificationsEnabled: $connectionNotificationsEnabled");
-        print("   - conBoton: $conBoton");
-        print("   - bleNotificationsEnabled: $bleNotificationsEnabled");
-        
-        // ✅ MOSTRAR NOTIFICACIÓN DE DESCONEXIÓN INMEDIATAMENTE
-        if (connectionNotificationsEnabled && conBoton == 1 && bleNotificationsEnabled) {
-          print("🔔 EJECUTANDO INMEDIATAMENTE: CommunicationService().showBleDisconnectedNotification()");
-          CommunicationService().showBleDisconnectedNotification();
-          bleDisconnectionNotificationShown = true;
-          markDisconnectionNotificationShown();
+        if (isConnected) {
+          // ✅ COMENTAR notificación de conexión
+          reconnectionAttemptCount = 0;
+          print("✅ BLE conectado - contador reiniciado");
+          
+          /*
+          // ✅ COMENTADO: Notificación de conexión no necesaria
+          if (firstBleConnection && connectionNotificationsEnabled && conBoton == 1) {
+            // CommunicationService().showBleConnectedNotification();
+            firstBleConnection = false;
+          }
+          else if (connectionNotificationsEnabled && conBoton == 1 && bleDisconnectionNotificationShown) {
+            // CommunicationService().showBleConnectedNotification();
+            bleDisconnectionNotificationShown = false;
+          }
+          */
+          
         } else {
-          print("🔕 No se muestra notificación de desconexión:");
-          print("   - connectionNotificationsEnabled: $connectionNotificationsEnabled");
-          print("   - conBoton: $conBoton");
-          print("   - bleNotificationsEnabled: $bleNotificationsEnabled");
+          // ✅ MANTENER: Solo notificación de desconexión
+          print("❌ BLE desconectado");
+          if (connectionNotificationsEnabled && conBoton == 1 && bleNotificationsEnabled) {
+            print("🔔 Enviando notificación de desconexión...");
+            CommunicationService().showBleDisconnectedNotification();
+            bleDisconnectionNotificationShown = true;
+            markDisconnectionNotificationShown();
+          }
         }
       }
-    }
 
     // ✅ NOTIFICACIONES ESPECÍFICAS iOS (código existente)
     if (Platform.isIOS && connectionStatus != null) {

@@ -22,28 +22,34 @@ class IOSPlatformManager {
   static const Duration _minimumLocationInterval = Duration(minutes: 5);
   
   // ✅ INICIALIZACIÓN ESPECÍFICA PARA iOS
-  static Future<void> initialize() async {
-    if (_isInitialized || !Platform.isIOS) return;
+static Future<void> initialize() async {
+  if (_isInitialized || !Platform.isIOS) return;
+  
+  print("🍎 Inicializando iOS Platform Manager...");
+  
+  try {
+    // 1. Configurar notificaciones locales
+    await _setupLocalNotifications();
     
-    print("🍎 Inicializando iOS Platform Manager...");
+    // 2. Configurar seguimiento de ubicación significativa
+    await _setupSignificantLocationChanges();
     
-    try {
-      // 1. Configurar notificaciones locales
-      await _setupLocalNotifications();
-      
-      // 2. Configurar seguimiento de ubicación significativa
-      await _setupSignificantLocationChanges();
-      
-      // 3. Configurar manejo de ciclo de vida de la app
-      _setupAppLifecycleHandling();
-      
-      _isInitialized = true;
-      print("✅ iOS Platform Manager inicializado exitosamente");
-      
-    } catch (e) {
-      print("❌ Error inicializando iOS Platform Manager: $e");
+    // 3. Configurar manejo de ciclo de vida de la app
+    _setupAppLifecycleHandling();
+    
+    // ✅ 4. NUEVO: Crear notificación persistente de monitoreo
+    if (BleData.conBoton == 1) { // Solo si BLE está habilitado
+      await Future.delayed(Duration(seconds: 2)); // Esperar inicialización
+      await showPersistentMonitoringNotification();
     }
+    
+    _isInitialized = true;
+    print("✅ iOS Platform Manager inicializado con notificación persistente");
+    
+  } catch (e) {
+    print("❌ Error inicializando iOS Platform Manager: $e");
   }
+}
   
   // ✅ CONFIGURAR NOTIFICACIONES LOCALES
   static Future<void> _setupLocalNotifications() async {
@@ -408,16 +414,12 @@ static Future<void> showStatusNotification(String message) async {
 
 static Future<void> showCriticalBleNotification(String title, String message, {bool isDisconnection = false}) async {
   try {
-    print("🔔 === PREPARANDO NOTIFICACIÓN BLE (CON TIMING) ===");
-    print("   Título: $title");
-    print("   Mensaje: $message");
+    print("🔔 Enviando notificación BLE: $title");
     
-    // ✅ PASO 1: Verificar y esperar inicialización
+    // ✅ Verificar inicialización
     if (_localNotifications == null) {
-      print("⚠️ Notificaciones no inicializadas, inicializando...");
       await _setupLocalNotifications();
-      // ✅ ESPERAR después de inicializar
-      await Future.delayed(Duration(seconds: 2));
+      await Future.delayed(Duration(seconds: 1));
     }
     
     if (_localNotifications == null) {
@@ -425,128 +427,39 @@ static Future<void> showCriticalBleNotification(String title, String message, {b
       return;
     }
     
-    // ✅ PASO 2: Verificar implementación iOS
-    final iosImpl = _localNotifications!
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-    
-    if (iosImpl == null) {
-      print("❌ No se pudo obtener implementación iOS");
-      return;
-    }
-    
-    // ✅ PASO 3: Esperar un momento antes de enviar
-    print("⏳ Esperando estabilización del sistema...");
+    // ✅ Esperar estabilización
     await Future.delayed(Duration(milliseconds: 500));
     
-    // ✅ PASO 4: Enviar notificación con ID único
+    // ✅ ID único
     int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    print("🔔 Enviando notificación con ID único: $notificationId");
     
-    try {
-      await _localNotifications!.show(
-        notificationId,
-        title,
-        "$message - ${DateTime.now().toString().substring(11, 19)}", // Agregar timestamp
-        const NotificationDetails(
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            sound: 'default',
-            interruptionLevel: InterruptionLevel.critical,
-            categoryIdentifier: 'BLE_CRITICAL',
-            threadIdentifier: 'ble_critical',
-          ),
+    await _localNotifications!.show(
+      notificationId,
+      title,
+      "$message - ${DateTime.now().toString().substring(11, 19)}",
+      const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'default',
+          interruptionLevel: InterruptionLevel.critical,
+          categoryIdentifier: 'BLE_CRITICAL',
+          threadIdentifier: 'ble_critical',
         ),
-      );
-      
-      print("✅ Notificación BLE enviada exitosamente con ID: $notificationId");
-      
-      // ✅ PASO 5: Verificar que se envió
-      await Future.delayed(Duration(milliseconds: 100));
-      print("✅ Notificación procesada");
-      
-    } catch (e) {
-      print("❌ Error enviando notificación: $e");
-      
-      // ✅ FALLBACK: Intentar con configuración más simple
-      try {
-        print("🔄 Intentando configuración de fallback...");
-        await _localNotifications!.show(
-          notificationId + 1,
-          title,
-          message,
-          const NotificationDetails(
-            iOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentSound: true,
-              interruptionLevel: InterruptionLevel.active,
-            ),
-          ),
-        );
-        print("✅ Notificación de fallback enviada");
-      } catch (fallbackError) {
-        print("❌ Error incluso con fallback: $fallbackError");
-      }
-    }
+      ),
+    );
+    
+    print("✅ Notificación BLE enviada: $title");
     
   } catch (e) {
-    print("❌ Error crítico en showCriticalBleNotification: $e");
+    print("❌ Error notificación BLE: $e");
   }
 }
 
 
-static Future<bool> sendNotificationWithRetries(String title, String message, {int maxRetries = 3}) async {
-  for (int attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      print("🔄 Intento $attempt/$maxRetries de enviar notificación...");
-      
-      // ✅ Verificar estado antes de cada intento
-      if (_localNotifications == null) {
-        await _setupLocalNotifications();
-        await Future.delayed(Duration(seconds: 1));
-      }
-      
-      if (_localNotifications == null) {
-        print("❌ No se pudo inicializar en intento $attempt");
-        continue;
-      }
-      
-      // ✅ ID único para cada intento
-      int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000 + attempt;
-      
-      await _localNotifications!.show(
-        notificationId,
-        "$title (Intento $attempt)",
-        "$message - ${DateTime.now().toString().substring(11, 19)}",
-        const NotificationDetails(
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            sound: 'default',
-            interruptionLevel: InterruptionLevel.critical,
-            categoryIdentifier: 'BLE_RETRY',
-          ),
-        ),
-      );
-      
-      print("✅ Notificación enviada exitosamente en intento $attempt");
-      return true;
-      
-    } catch (e) {
-      print("❌ Error en intento $attempt: $e");
-      
-      if (attempt < maxRetries) {
-        print("⏳ Esperando antes del siguiente intento...");
-        await Future.delayed(Duration(seconds: attempt)); // Espera progresiva
-      }
-    }
-  }
-  
-  print("❌ Falló enviar notificación después de $maxRetries intentos");
-  return false;
-}
+
+
 
 
 static Future<void> playSosAudioBackground() async {
@@ -639,198 +552,109 @@ static Future<void> playSosAudioBackground() async {
   }
 }
 
-static Future<bool> forceRequestNotificationPermissions() async {
-  try {
-    print("🔔 === FORZANDO SOLICITUD DE PERMISOS ===");
-    
-    if (_localNotifications == null) {
-      await _setupLocalNotifications();
-    }
-    
-    final iosImpl = _localNotifications!
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-    
-    if (iosImpl != null) {
-      print("📱 Solicitando permisos explícitamente...");
-      
-      // ✅ SOLICITAR TODOS LOS PERMISOS POSIBLES
-      final bool? result = await iosImpl.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
-        critical: true, // ✅ CRÍTICO para emergencias
-      );
-      
-      print("📱 Resultado de solicitud: $result");
-      
-      // ✅ VERIFICAR USANDO permission_handler EN LUGAR DE checkPermissions()
-      bool notificationPermission = await Permission.notification.isGranted;
-      print("📱 Estado de permisos de notificación: $notificationPermission");
-      
-      // ✅ PROBAR NOTIFICACIÓN INMEDIATAMENTE
-      if (result == true || notificationPermission) {
-        print("✅ Permisos concedidos, probando notificación...");
-        
-        try {
-          await _localNotifications!.show(
-            999,
-            "🎉 PERMISOS CONCEDIDOS",
-            "Las notificaciones están funcionando correctamente",
-            const NotificationDetails(
-              iOS: DarwinNotificationDetails(
-                presentAlert: true,
-                presentBadge: true,
-                presentSound: true,
-                interruptionLevel: InterruptionLevel.critical,
-              ),
-            ),
-          );
-          print("✅ Notificación de prueba enviada");
-          return true;
-        } catch (e) {
-          print("⚠️ Error enviando notificación de prueba: $e");
-          return false;
-        }
-      } else {
-        print("❌ Permisos no concedidos");
-        return false;
-      }
-      
-    } else {
-      print("❌ No se pudo obtener implementación iOS");
-      return false;
-    }
-    
-  } catch (e) {
-    print("❌ Error forzando solicitud de permisos: $e");
-    return false;
-  }
-}
+
 
 
 static Future<String> checkCurrentPermissionStatus() async {
   try {
-    print("🔍 === VERIFICANDO PERMISOS DETALLADAMENTE ===");
-    
-    // ✅ MÉTODO REAL: Intentar mostrar notificación y ver si funciona
     if (_localNotifications == null) {
       await _setupLocalNotifications();
     }
     
-    final iosImpl = _localNotifications!
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-    
-    if (iosImpl != null) {
-      try {
-        // ✅ PROBAR NOTIFICACIÓN CRÍTICA REAL
-        print("📱 Probando notificación crítica para verificar permisos...");
-        
-        await _localNotifications!.show(
-          888, // ID de prueba específico
-          "🧪 Verificación de Permisos",
-          "Si ves esta notificación, los permisos están OK",
-          const NotificationDetails(
-            iOS: DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-              interruptionLevel: InterruptionLevel.critical,
-              categoryIdentifier: 'PERMISSION_TEST',
-            ),
-          ),
-        );
-        
-        print("✅ Notificación de verificación enviada sin errores");
-        
-        // ✅ Si llegamos aquí sin excepción, los permisos están OK
-        return "Concedido (Verificado)";
-        
-      } catch (e) {
-        print("❌ Error enviando notificación de verificación: $e");
-        
-        // ✅ Si hay error, los permisos no están bien configurados
-        return "Denegado (Error: $e)";
-      }
+    if (_localNotifications != null) {
+      // ✅ REMOVER notificación de prueba - solo verificar que esté inicializado
+      return "Concedido";
     } else {
-      print("❌ No se pudo obtener implementación iOS");
-      return "Error (No iOS impl)";
+      return "Error";
     }
-    
   } catch (e) {
-    print("❌ Error general verificando permisos: $e");
     return "Error: $e";
   }
 }
 
-static Future<void> debugNotificationSettings() async {
+// ✅ NUEVA FUNCIÓN: Mostrar notificación persistente de monitoreo
+static Future<void> showPersistentMonitoringNotification() async {
   try {
-    print("🔍 === DEBUG DETALLADO CON TIMING CORRECTO ===");
+    print("📌 Creando notificación persistente de monitoreo...");
     
-    // ✅ PASO 1: Asegurar inicialización completa
     if (_localNotifications == null) {
-      print("🔄 Inicializando notificaciones para debug...");
       await _setupLocalNotifications();
-      await Future.delayed(Duration(seconds: 3)); // Espera más larga
-      print("✅ Inicialización completa");
+      await Future.delayed(Duration(seconds: 1));
     }
     
     if (_localNotifications == null) {
-      print("❌ No se pudo inicializar para debug");
+      print("❌ No se pudo inicializar para notificación persistente");
       return;
     }
     
-    // ✅ PASO 2: Probar notificación simple primero
-    print("📱 Probando notificación simple...");
-    bool simpleSuccess = await sendNotificationWithRetries(
-      "🔵 Prueba Simple", 
-      "Si ves esto, las notificaciones básicas funcionan"
+    // ✅ ID fijo para notificación persistente
+    const int persistentNotificationId = 1000;
+    
+    String title = "🔵 Monitoreo BLE Activo";
+    String message = "Sistema SOS operativo - Dispositivo monitoreado";
+    
+    // ✅ Configuración para notificación persistente
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: false, // ✅ No mostrar alerta emergente
+      presentBadge: false, // ✅ No mostrar badge
+      presentSound: false, // ✅ Sin sonido
+      interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir
+      categoryIdentifier: 'MONITORING_PERSISTENT',
+      threadIdentifier: 'monitoring',
+      subtitle: 'Servicio de Emergencia',
     );
     
-    if (!simpleSuccess) {
-      print("❌ Falló notificación simple, deteniendo debug");
-      return;
-    }
+    const NotificationDetails details = NotificationDetails(iOS: iosDetails);
     
-    await Future.delayed(Duration(seconds: 3));
-    
-    // ✅ PASO 3: Probar notificación crítica
-    print("📱 Probando notificación crítica...");
-    bool criticalSuccess = await sendNotificationWithRetries(
-      "🚨 Prueba Crítica", 
-      "Si ves esto, las notificaciones críticas funcionan"
+    await _localNotifications!.show(
+      persistentNotificationId,
+      title,
+      message,
+      details,
     );
     
-    await Future.delayed(Duration(seconds: 3));
-    
-    // ✅ PASO 4: Probar notificación específica BLE
-    print("📱 Probando notificación tipo BLE...");
-    await showCriticalBleNotification(
-      "🔵 Prueba BLE", 
-      "Esta es exactamente como las notificaciones reales de BLE",
-      isDisconnection: true
-    );
-    
-    print("🔍 === FIN DEBUG CON TIMING ===");
-    print("✅ Resultados:");
-    print("   - Simple: ${simpleSuccess ? 'OK' : 'FALLO'}");
-    print("   - Crítica: ${criticalSuccess ? 'OK' : 'FALLO'}");
+    print("✅ Notificación persistente de monitoreo creada");
     
   } catch (e) {
-    print("❌ Error en debug con timing: $e");
+    print("❌ Error creando notificación persistente: $e");
+  }
+}
+
+// ✅ NUEVA FUNCIÓN: Remover notificación persistente
+static Future<void> removePersistentMonitoringNotification() async {
+  try {
+    print("📌 Removiendo notificación persistente de monitoreo...");
+    
+    if (_localNotifications == null) {
+      print("⚠️ Notificaciones no inicializadas para remover persistente");
+      return;
+    }
+    
+    // ✅ Remover notificación con ID fijo
+    const int persistentNotificationId = 1000;
+    await _localNotifications!.cancel(persistentNotificationId);
+    
+    print("✅ Notificación persistente removida");
+    
+  } catch (e) {
+    print("❌ Error removiendo notificación persistente: $e");
   }
 }
 
   
   // ✅ LIMPIAR RECURSOS
-  static Future<void> dispose() async {
-    print("🧹 Limpiando recursos iOS...");
-    
-    await _locationSubscription?.cancel();
-    _locationSubscription = null;
-    _isInitialized = false;
-    
-    print("✅ Recursos iOS limpiados");
-  }
+static Future<void> dispose() async {
+  print("🧹 Limpiando recursos iOS...");
+  
+  // ✅ NUEVO: Remover notificación persistente al cerrar
+  await removePersistentMonitoringNotification();
+  
+  await _locationSubscription?.cancel();
+  _locationSubscription = null;
+  _isInitialized = false;
+  
+  print("✅ Recursos iOS limpiados y notificación persistente removida");
+}
   
   // ✅ VERIFICAR SI ESTÁ EJECUTÁNDOSE EN iOS
   static bool get isIOS => Platform.isIOS;
