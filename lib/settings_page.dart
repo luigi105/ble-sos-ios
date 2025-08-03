@@ -93,6 +93,106 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _testNotificationsManually() async {
+  try {
+    // Mostrar que se está probando
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🧪 Probando notificaciones..."),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 1),
+      ),
+    );
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    // Prueba 1: Notificación básica
+    try {
+      await IOSPlatformManager.showStatusNotification(
+        "🧪 PRUEBA MANUAL 1: Notificación básica desde Settings"
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Prueba 1 enviada (básica)"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Prueba 1 error: $e"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    
+    await Future.delayed(Duration(seconds: 3));
+    
+    // Prueba 2: Notificación crítica
+    try {
+      await IOSPlatformManager.showCriticalBleNotification(
+        "🧪 PRUEBA MANUAL 2", 
+        "Notificación crítica desde Settings - ${DateTime.now().toString().substring(11, 19)}",
+        isDisconnection: false
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Prueba 2 enviada (crítica)"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Prueba 2 error: $e"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    
+    await Future.delayed(Duration(seconds: 3));
+    
+    // Prueba 3: Audio SOS
+    try {
+      await IOSPlatformManager.playSosAudioBackground();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Prueba 3 enviada (audio SOS)"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Prueba 3 error: $e"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("❌ Error general: $e"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+}
+
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -102,8 +202,24 @@ Widget build(BuildContext context) {
         Platform.isIOS ? "🍎 Configuración iOS" : "🤖 Configuración",
         style: const TextStyle(color: Colors.white),
       ),
-      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
+      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green,
       iconTheme: const IconThemeData(color: Colors.white),
+      actions: [
+        // ✅ BOTÓN DE PRUEBA DE NOTIFICACIONES (TEMPORAL)
+        if (Platform.isIOS) 
+          IconButton(
+            icon: Icon(Icons.notification_add, color: Colors.white),
+            onPressed: () async {
+              await _testNotificationsManually();
+            },
+          ),
+        IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            // Acción adicional si la necesitas
+          },
+        ),
+      ],
     ),
     body: SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),

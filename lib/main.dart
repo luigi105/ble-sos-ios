@@ -365,6 +365,16 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   String _lastButtonAction = "Ninguna";
   String _configurationStatus = "Sin configurar";
 
+    // ✅ NUEVAS VARIABLES PARA DEBUG DE NOTIFICACIONES
+  String _notificationDebugStatus = "Sin inicializar";
+  String _lastNotificationError = "Ninguno";
+  String _notificationPermissionStatus = "Desconocido";
+  int _notificationAttempts = 0;
+  int _notificationSuccesses = 0;
+  String _lastNotificationTest = "Sin probar";
+  String _iosManagerStatus = "Sin inicializar";
+  String _localNotificationStatus = "Sin verificar";
+
    @override
   void initState() {
     super.initState();
@@ -429,106 +439,120 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
 
 // ✅ FUNCIÓN COMPLETA _initializeiOS() CORREGIDA para main.dart:
 
-Future<void> _initializeiOS() async {
-  print("🍎 Inicializando estrategia iOS...");
-  
-  // Inicializar estados anteriores
-  previousConnectionState = BleData.isConnected;
-  previousLocationConfirmed = BleData.locationConfirmed;
+  Future<void> _initializeiOS() async {
+    print("🍎 Inicializando estrategia iOS...");
+    
+    // ✅ DEBUGGING DE NOTIFICACIONES - PASO A PASO
+    await _debugNotificationSystemStepByStep();
+    
+    // Inicializar estados anteriores
+    previousConnectionState = BleData.isConnected;
+    previousLocationConfirmed = BleData.locationConfirmed;
 
-  locationService.initializeDeviceId().then((_) {
-    print("Device ID inicializado correctamente: ${BleData.deviceId}");
+    locationService.initializeDeviceId().then((_) {
+      print("Device ID inicializado correctamente: ${BleData.deviceId}");
 
-    if (BleData.conBoton == 1) {
-      // ✅ INICIALIZAR IOSPlatformManager PRIMERO
-      IOSPlatformManager.initialize().then((_) {
-        print("✅ IOSPlatformManager inicializado");
-        
-        // Luego solicitar permisos
-        requestPermissions().then((_) {
-          Future.delayed(Duration(seconds: 3), () async {
-            await verifyPermissionsAfterStartup();
-            
-            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-            
-            if (!locationAlwaysGranted) {
-              print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN DIRECTA A iOS
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                );
+      if (BleData.conBoton == 1) {
+        // ✅ INICIALIZAR IOSPlatformManager PRIMERO
+        IOSPlatformManager.initialize().then((_) {
+          print("✅ IOSPlatformManager inicializado");
+          
+          // ✅ DEBUGGING ADICIONAL DESPUÉS DE INICIALIZAR
+          _verifyNotificationSetupAfterInit();
+          
+          // Luego solicitar permisos
+          requestPermissions().then((_) {
+            Future.delayed(Duration(seconds: 3), () async {
+              await verifyPermissionsAfterStartup();
+              
+              bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+              
+              if (!locationAlwaysGranted) {
+                print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
+                if (_isMounted && navigatorKey.currentContext != null) {
+                  Navigator.push(
+                    navigatorKey.currentContext!,
+                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                  );
+                }
+              } else {
+                print("✅ Permisos iOS configurados correctamente");
               }
-            } else {
-              print("✅ Permisos iOS configurados correctamente");
+            });
+            
+            // ✅ CONFIGURAR BLE para conBoton == 1
+            _setupiOSBLE();
+            
+            // ✅ SIEMPRE iniciar ubicación
+            if (!locationService.isUpdatingLocation) {
+              print("📍 Iniciando servicio de ubicación iOS...");
+              locationService.startLocationUpdates();
             }
           });
-          
-          // ✅ CONFIGURAR BLE para conBoton == 1
-          _setupiOSBLE();
-          
-          // ✅ SIEMPRE iniciar ubicación
-          if (!locationService.isUpdatingLocation) {
-            print("📍 Iniciando servicio de ubicación iOS...");
-            locationService.startLocationUpdates();
-          }
         });
-      });
-    } else {
-      // ✅ MODO 2: Solo ubicación GPS
-      IOSPlatformManager.initialize().then((_) {
-        print("✅ IOSPlatformManager inicializado para modo GPS");
-        
-        requestPermissions().then((_) {
-          Future.delayed(Duration(seconds: 3), () async {
-            await verifyPermissionsAfterStartup();
-            
-            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-            
-            if (!locationAlwaysGranted) {
-              print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                // ✅ NAVEGACIÓN DIRECTA A iOS
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                );
+      } else {
+        // ✅ MODO 2: Solo ubicación GPS
+        IOSPlatformManager.initialize().then((_) {
+          print("✅ IOSPlatformManager inicializado para modo GPS");
+          
+          // ✅ DEBUGGING PARA MODO GPS TAMBIÉN
+          _verifyNotificationSetupAfterInit();
+          
+          requestPermissions().then((_) {
+            Future.delayed(Duration(seconds: 3), () async {
+              await verifyPermissionsAfterStartup();
+              
+              bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+              
+              if (!locationAlwaysGranted) {
+                print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
+                if (_isMounted && navigatorKey.currentContext != null) {
+                  Navigator.push(
+                    navigatorKey.currentContext!,
+                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                  );
+                }
+              } else {
+                print("✅ Permisos iOS configurados correctamente para modo GPS");
               }
-            } else {
-              print("✅ Permisos iOS configurados correctamente para modo GPS");
+            });
+            
+            // ✅ SOLO iniciar ubicación (sin BLE)
+            if (!locationService.isUpdatingLocation) {
+              print("📍 Iniciando servicio de ubicación iOS (solo GPS)...");
+              locationService.startLocationUpdates();
             }
           });
-          
-          // ✅ SOLO iniciar ubicación (sin BLE)
-          if (!locationService.isUpdatingLocation) {
-            print("📍 Iniciando servicio de ubicación iOS (solo GPS)...");
-            locationService.startLocationUpdates();
-          }
         });
-      });
-    }
-  });
-
-  print("✅ iOS inicializado con IOSPlatformManager");
-  
-  // ✅ ACTUALIZAR UI periódicamente
-  Timer.periodic(const Duration(seconds: 2), (timer) async {
-    if (_isMounted) {
-      // ✅ CAPTURAR estado de Bluetooth
-      try {
-        BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
-        _bluetoothState = bleState.toString().split('.').last;
-      } catch (e) {
-        _bluetoothState = "Error: $e";
       }
-      
-      setState(() {
-        sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-        sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-      });
-    }
-  });
+    });
+
+    print("✅ iOS inicializado con IOSPlatformManager");
+    
+    // ✅ ACTUALIZAR UI periódicamente
+    Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (_isMounted) {
+        // ✅ CAPTURAR estado de Bluetooth
+        try {
+          BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+          _bluetoothState = bleState.toString().split('.').last;
+        } catch (e) {
+          _bluetoothState = "Error: $e";
+        }
+        
+        setState(() {
+          sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+          sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
+        });
+      }
+    });
+    
+    // ✅ TIMER PARA PRUEBAS AUTOMÁTICAS DE NOTIFICACIÓN (cada 30 segundos)
+    Timer.periodic(Duration(seconds: 30), (timer) async {
+      if (_isMounted) {
+        await _testNotificationsPeriodically();
+      }
+    });
   
   // ✅ TIMER DE RECOVERY PARA DISCOVERY (CORREGIDO)
   Timer.periodic(Duration(seconds: 8), (timer) async {
@@ -618,6 +642,130 @@ Future<void> _initializeiOS() async {
   _debugiOSConfiguration();
   _debugBLEConnection();
 }
+
+
+  // ✅ NUEVA FUNCIÓN: Debug paso a paso del sistema de notificaciones
+  Future<void> _debugNotificationSystemStepByStep() async {
+    if (mounted) setState(() => _notificationDebugStatus = "Iniciando debugging...");
+    
+    try {
+      // Paso 1: Verificar plataforma
+      if (mounted) setState(() => _notificationDebugStatus = "Verificando plataforma iOS...");
+      await Future.delayed(Duration(seconds: 1));
+      
+      if (!Platform.isIOS) {
+        if (mounted) setState(() => _notificationDebugStatus = "ERROR: No es iOS");
+        return;
+      }
+      
+      // Paso 2: Verificar permisos básicos
+      if (mounted) setState(() => _notificationDebugStatus = "Verificando permisos...");
+      bool notificationGranted = await Permission.notification.isGranted;
+      if (mounted) setState(() => _notificationPermissionStatus = notificationGranted ? "Concedido" : "Denegado");
+      
+      // Paso 3: Intentar inicializar IOSPlatformManager
+      if (mounted) setState(() => _notificationDebugStatus = "Inicializando IOSPlatformManager...");
+      try {
+        await IOSPlatformManager.initialize();
+        if (mounted) setState(() => _iosManagerStatus = "Inicializado OK");
+      } catch (e) {
+        if (mounted) setState(() => _iosManagerStatus = "Error: $e");
+      }
+      
+      // Paso 4: Verificar notificaciones locales
+      if (mounted) setState(() => _notificationDebugStatus = "Verificando notificaciones locales...");
+      await _checkLocalNotificationStatus();
+      
+      if (mounted) setState(() => _notificationDebugStatus = "Debugging completado");
+      
+    } catch (e) {
+      if (mounted) setState(() {
+        _notificationDebugStatus = "Error en debugging: $e";
+        _lastNotificationError = e.toString();
+      });
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Verificar estado de notificaciones locales
+  Future<void> _checkLocalNotificationStatus() async {
+    try {
+      // Intentar mostrar una notificación de prueba simple
+      if (mounted) setState(() => _localNotificationStatus = "Probando notificación simple...");
+      
+      await IOSPlatformManager.showStatusNotification("🧪 Prueba de notificación básica");
+      
+      if (mounted) setState(() => _localNotificationStatus = "Notificación básica enviada");
+      
+    } catch (e) {
+      if (mounted) setState(() => _localNotificationStatus = "Error: $e");
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Verificar configuración después de inicializar
+  Future<void> _verifyNotificationSetupAfterInit() async {
+    await Future.delayed(Duration(seconds: 2));
+    
+    try {
+      if (mounted) setState(() => _notificationDebugStatus = "Verificando configuración post-init...");
+      
+      // Probar notificación crítica
+      await IOSPlatformManager.showCriticalBleNotification(
+        "🧪 Prueba Post-Init", 
+        "Notificación de verificación después de inicializar",
+        isDisconnection: false
+      );
+      
+      _notificationAttempts++;
+      _notificationSuccesses++;
+      
+      if (mounted) setState(() {
+        _lastNotificationTest = "Post-init OK ${DateTime.now().toString().substring(11, 19)}";
+        _notificationDebugStatus = "Configuración verificada";
+      });
+      
+    } catch (e) {
+      _notificationAttempts++;
+      if (mounted) setState(() {
+        _lastNotificationTest = "Post-init ERROR: $e";
+        _lastNotificationError = e.toString();
+      });
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Pruebas periódicas de notificación
+  Future<void> _testNotificationsPeriodically() async {
+    try {
+      _notificationAttempts++;
+      
+      if (mounted) setState(() => _notificationDebugStatus = "Prueba periódica #$_notificationAttempts");
+      
+      // Alternar entre tipos de notificación
+      if (_notificationAttempts % 2 == 0) {
+        await IOSPlatformManager.showStatusNotification(
+          "🔄 Prueba periódica #$_notificationAttempts - ${DateTime.now().toString().substring(11, 19)}"
+        );
+      } else {
+        await IOSPlatformManager.showCriticalBleNotification(
+          "🔄 Prueba Crítica #$_notificationAttempts", 
+          "Prueba crítica periódica - ${DateTime.now().toString().substring(11, 19)}",
+          isDisconnection: false
+        );
+      }
+      
+      _notificationSuccesses++;
+      
+      if (mounted) setState(() {
+        _lastNotificationTest = "Periódica #$_notificationAttempts OK";
+        _notificationDebugStatus = "Prueba periódica exitosa";
+      });
+      
+    } catch (e) {
+      if (mounted) setState(() {
+        _lastNotificationTest = "Periódica #$_notificationAttempts ERROR: $e";
+        _lastNotificationError = e.toString();
+      });
+    }
+  }
 
 // ✅ FUNCIÓN DEBUG para iOS
 Future<void> _debugiOSConfiguration() async {
@@ -1835,140 +1983,116 @@ Future<bool> startScanAndConnect() async {
     );
   }
 
-Widget _buildPortraitLayout(Size size) {
-  return SafeArea(
-    child: Stack(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: size.width * 0.04,
-            vertical: size.height * 0.02,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ✅ DEBUG CONTAINER CORREGIDO
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade300, width: 2),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "🚨 DEBUG BLE COMPLETO",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.red.shade700,
+  Widget _buildPortraitLayout(Size size) {
+    return SafeArea(
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: size.width * 0.04,
+              vertical: size.height * 0.02,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ✅ DEBUG CONTAINER AMPLIADO CON NOTIFICACIONES
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8), // ✅ Reducir padding para más espacio
+                  margin: const EdgeInsets.only(bottom: 12), // ✅ Reducir margen
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade300, width: 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "🚨 DEBUG BLE + NOTIFICACIONES",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12, // ✅ Reducir font
+                          color: Colors.red.shade700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    
-                    // ✅ SECCIÓN 1: CONEXIÓN Y SERVICIOS
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("🔍 DESCUBRIMIENTO:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                          Text("Conectado: ${BleData.isConnected ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                          Text("Servicios: $_totalServices", style: TextStyle(fontSize: 9)),
-                          Text("Estado: $_discoveryStatus", style: TextStyle(fontSize: 8)),
-                          if (_foundServiceUuids.isNotEmpty && _foundServiceUuids.length <= 3) ...[
-                            Text("UUIDs encontrados:", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-                            ...(_foundServiceUuids.map((uuid) => 
-                              Text("  ${uuid.substring(0, 8)}...", style: TextStyle(fontSize: 7))
-                            )),
+                      const SizedBox(height: 4), // ✅ Reducir espacio
+                      
+                      // ✅ SECCIÓN 1: NOTIFICACIONES (NUEVA)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.purple.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("🔔 NOTIFICACIONES:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                            Text("Estado: $_notificationDebugStatus", style: TextStyle(fontSize: 8)),
+                            Text("Permisos: $_notificationPermissionStatus", style: TextStyle(fontSize: 8)),
+                            Text("iOS Manager: $_iosManagerStatus", style: TextStyle(fontSize: 8)),
+                            Text("Local: $_localNotificationStatus", style: TextStyle(fontSize: 8)),
+                            Text("Intentos: $_notificationAttempts | Éxitos: $_notificationSuccesses", style: TextStyle(fontSize: 8)),
+                            Text("Última prueba: $_lastNotificationTest", style: TextStyle(fontSize: 7)),
+                            if (_lastNotificationError != "Ninguno")
+                              Text("Error: $_lastNotificationError", style: TextStyle(fontSize: 7, color: Colors.red)),
                           ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // ✅ SECCIÓN 2: SERVICIO SOS ESPECÍFICO
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: _sosServiceFound ? Colors.green.shade50 : Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: _sosServiceFound ? Colors.green.shade200 : Colors.orange.shade200
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("🎯 SERVICIO SOS:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                          Text("Servicio 6E40...CA9E: ${_sosServiceFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                          Text("Write 6E40...CA9E: ${_writeCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                          Text("Notify 6E40...CA9E: ${_notifyCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 9)),
-                          Text("Config: $_configurationStatus", style: TextStyle(fontSize: 8)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // ✅ SECCIÓN 3: DATOS Y BOTÓN
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: _dataPacketsReceived > 0 ? Colors.teal.shade50 : Colors.yellow.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: _dataPacketsReceived > 0 ? Colors.teal.shade200 : Colors.yellow.shade600
+                      const SizedBox(height: 3),
+                      
+                      // ✅ SECCIÓN 2: BLE (CÓDIGO EXISTENTE COMPACTADO)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _sosServiceFound ? Colors.green.shade50 : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: _sosServiceFound ? Colors.green.shade200 : Colors.orange.shade200
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("🎯 BLE:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                            Text("Conectado: ${BleData.isConnected ? '✅' : '❌'} | Servicios: $_totalServices", style: TextStyle(fontSize: 8)),
+                            Text("SOS Service: ${_sosServiceFound ? '✅' : '❌'} | Write: ${_writeCharFound ? '✅' : '❌'}", style: TextStyle(fontSize: 8)),
+                            Text("Notify: ${_notifyCharFound ? '✅' : '❌'} | Paquetes: $_dataPacketsReceived", style: TextStyle(fontSize: 8)),
+                            Text("Botón: $_buttonStatus | Acción: $_lastButtonAction", style: TextStyle(fontSize: 7)),
+                          ],
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("📡 COMUNICACIÓN:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                          Text("Paquetes: $_dataPacketsReceived", style: TextStyle(fontSize: 9)),
-                          Text("Botón: $_buttonStatus", style: TextStyle(fontSize: 9)),
-                          Text("Acción: $_lastButtonAction", style: TextStyle(fontSize: 9)),
-                          Text("Datos: $_lastBleData", style: TextStyle(fontSize: 7)),
-                        ],
+                      const SizedBox(height: 3),
+                      
+                      // ✅ SECCIÓN 3: SISTEMA (COMPACTADA)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                            Text("iOS | BT: $_bluetoothState | Escaneos: $_scanAttempts", style: TextStyle(fontSize: 8)),
+                            Text("IMEI: ${BleData.imei.length > 8 ? BleData.imei.substring(0, 8) + '...' : BleData.imei}", style: TextStyle(fontSize: 8)),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // ✅ SECCIÓN 4: INFORMACIÓN BÁSICA
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.purple.shade200),
+                      
+                      const SizedBox(height: 2),
+                      Text(
+                        "⏰ ${DateTime.now().toString().substring(11, 19)}",
+                        style: TextStyle(fontSize: 7, color: Colors.grey.shade600),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                          Text("${Platform.isIOS ? 'iOS' : 'Android'} | BT: $_bluetoothState", style: TextStyle(fontSize: 9)),
-                          Text("IMEI: ${BleData.imei.length > 10 ? BleData.imei.substring(0, 10) + '...' : BleData.imei}", style: TextStyle(fontSize: 9)),
-                          Text("Target: Holy-IOT", style: TextStyle(fontSize: 9)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    
-                    Text(
-                      "⏰ ${DateTime.now().toString().substring(11, 19)} | Escaneos: $_scanAttempts",
-                      style: TextStyle(fontSize: 8, color: Colors.grey.shade600),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ), // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
+ // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
               
               if (BleData.conBoton == 1) ...[
                 Container(
