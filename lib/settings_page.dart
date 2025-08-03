@@ -205,7 +205,15 @@ Widget build(BuildContext context) {
       backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
       iconTheme: const IconThemeData(color: Colors.white),
       actions: [
-        // ✅ BOTÓN DE PRUEBA DE NOTIFICACIONES (TEMPORAL)
+        // ✅ BOTÓN PARA FORZAR PERMISOS
+        if (Platform.isIOS) 
+          IconButton(
+            icon: Icon(Icons.security, color: Colors.white),
+            onPressed: () async {
+              await _forceRequestPermissions();
+            },
+          ),
+        // ✅ BOTÓN DE PRUEBA DE NOTIFICACIONES (EXISTENTE)
         if (Platform.isIOS) 
           IconButton(
             icon: Icon(Icons.notification_add, color: Colors.white),
@@ -810,4 +818,57 @@ Widget build(BuildContext context) {
       });
     }
   }
+
+  Future<void> _forceRequestPermissions() async {
+  try {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔔 Solicitando permisos de notificación..."),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    // ✅ FORZAR SOLICITUD
+    bool granted = await IOSPlatformManager.forceRequestNotificationPermissions();
+    
+    if (granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ ¡Permisos concedidos! Prueba las notificaciones ahora."),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      
+      // ✅ PROBAR INMEDIATAMENTE
+      await Future.delayed(Duration(seconds: 1));
+      await IOSPlatformManager.showCriticalBleNotification(
+        "🎉 ¡PERMISOS OK!", 
+        "Las notificaciones ahora deberían funcionar correctamente",
+        isDisconnection: false
+      );
+      
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("⚠️ Permisos no concedidos. Ve a Settings → BLE SOS → Notifications"),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+    
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("❌ Error: $e"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+}
+
+
 }

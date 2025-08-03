@@ -538,6 +538,59 @@ static Future<void> playSosAudioBackground() async {
   }
 }
 
+static Future<bool> forceRequestNotificationPermissions() async {
+  try {
+    print("🔔 === FORZANDO SOLICITUD DE PERMISOS ===");
+    
+    if (_localNotifications == null) {
+      await _setupLocalNotifications();
+    }
+    
+    final iosImpl = _localNotifications!
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
+    if (iosImpl != null) {
+      print("📱 Solicitando permisos explícitamente...");
+      
+      // ✅ SOLICITAR TODOS LOS PERMISOS POSIBLES
+      final bool? result = await iosImpl.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+        critical: true, // ✅ CRÍTICO para emergencias
+        provisional: true, // ✅ Para notificaciones no intrusivas
+      );
+      
+      print("📱 Resultado de solicitud: $result");
+      
+      // ✅ VERIFICAR ESTADO DESPUÉS DE SOLICITAR
+      final settings = await iosImpl.checkPermissions();
+      print("📱 Estado después de solicitar:");
+      print("   - Alert: ${settings.alert}");
+      print("   - Badge: ${settings.badge}");
+      print("   - Sound: ${settings.sound}");
+      print("   - Critical: ${settings.criticalAlert}");
+      print("   - Provisional: ${settings.provisional}");
+      
+      bool allGranted = settings.alert == true && 
+                       settings.sound == true && 
+                       settings.criticalAlert == true;
+      
+      print("📱 ¿Todos los permisos críticos concedidos? $allGranted");
+      
+      return allGranted;
+      
+    } else {
+      print("❌ No se pudo obtener implementación iOS");
+      return false;
+    }
+    
+  } catch (e) {
+    print("❌ Error forzando solicitud de permisos: $e");
+    return false;
+  }
+}
+
 
   
   // ✅ LIMPIAR RECURSOS
