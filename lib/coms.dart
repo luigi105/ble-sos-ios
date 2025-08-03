@@ -327,13 +327,31 @@ Future<void> showBleDisconnectedNotification() async {
       print("✅ Notificación Android enviada al canal nativo");
     } 
     else if (Platform.isIOS) {
-      // ✅ iOS: Notificación CRÍTICA que despierta dispositivo
+      // ✅ iOS: USAR LA FUNCIÓN CORRECTA CON SONIDO
       await IOSPlatformManager.showCriticalBleNotification(
         "⚠️ BLE Desconectado", 
         "Dispositivo SOS desconectado. iOS intentará reconectar automáticamente. Verifique que esté encendido.",
         isDisconnection: true
       );
-      print("✅ Notificación BLE CRÍTICA iOS enviada (debería despertar pantalla)");
+      
+      // ✅ AGREGAR SONIDO SEPARADO
+      if (BleData.sosSoundEnabled) {
+        try {
+          final AudioPlayer alertPlayer = AudioPlayer();
+          await alertPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+          print("🔊 Sonido de alerta BLE desconectado reproducido");
+          
+          // Detener después de 2 segundos
+          Timer(Duration(seconds: 2), () {
+            alertPlayer.stop();
+            alertPlayer.dispose();
+          });
+        } catch (e) {
+          print("⚠️ Error reproduciendo sonido de desconexión: $e");
+        }
+      }
+      
+      print("✅ Notificación BLE CRÍTICA iOS enviada con sonido");
     }
     
     print("✅ Notificación de desconexión BLE mostrada.");
@@ -358,13 +376,31 @@ Future<void> showBleConnectedNotification() async {
       print("✅ Notificación Android enviada al canal nativo");
     } 
     else if (Platform.isIOS) {
-      // ✅ iOS: Notificación PROMINENTE
+      // ✅ iOS: USAR LA FUNCIÓN CORRECTA CON SONIDO
       await IOSPlatformManager.showCriticalBleNotification(
         "🔵 BLE Conectado", 
         "Dispositivo SOS conectado y funcionando correctamente",
         isDisconnection: false
       );
-      print("✅ Notificación BLE PROMINENTE iOS enviada");
+      
+      // ✅ AGREGAR SONIDO SUTIL PARA CONEXIÓN
+      if (BleData.sosSoundEnabled) {
+        try {
+          final AudioPlayer connectPlayer = AudioPlayer();
+          await connectPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+          print("🔊 Sonido de conexión BLE reproducido");
+          
+          // Detener después de 1 segundo (más corto para conexión)
+          Timer(Duration(seconds: 1), () {
+            connectPlayer.stop();
+            connectPlayer.dispose();
+          });
+        } catch (e) {
+          print("⚠️ Error reproduciendo sonido de conexión: $e");
+        }
+      }
+      
+      print("✅ Notificación BLE PROMINENTE iOS enviada con sonido");
     }
     
     print("✅ Notificación de conexión BLE mostrada.");

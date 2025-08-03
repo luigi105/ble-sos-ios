@@ -530,22 +530,32 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     print("✅ iOS inicializado con IOSPlatformManager");
     
     // ✅ ACTUALIZAR UI periódicamente
-    Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (_isMounted) {
-        // ✅ CAPTURAR estado de Bluetooth
-        try {
-          BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
-          _bluetoothState = bleState.toString().split('.').last;
-        } catch (e) {
-          _bluetoothState = "Error: $e";
-        }
-        
-        setState(() {
-          sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-          sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-        });
-      }
+Timer.periodic(const Duration(seconds: 10), (timer) async {
+  if (_isMounted) {
+    // ✅ ACTUALIZAR ESTADO DE PERMISOS CADA 10 SEGUNDOS
+    try {
+      String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
+      setState(() {
+        _notificationPermissionStatus = permissionStatus;
+      });
+    } catch (e) {
+      print("Error actualizando permisos: $e");
+    }
+    
+    // Resto del código existente del timer...
+    try {
+      BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+      _bluetoothState = bleState.toString().split('.').last;
+    } catch (e) {
+      _bluetoothState = "Error: $e";
+    }
+    
+    setState(() {
+      sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+      sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
     });
+  }
+});
     
     // ✅ TIMER PARA PRUEBAS AUTOMÁTICAS DE NOTIFICACIÓN (cada 30 segundos)
     Timer.periodic(Duration(seconds: 30), (timer) async {
