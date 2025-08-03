@@ -8,6 +8,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // ✅ IMPORT CRÍTICO
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'ble_data.dart';
 import 'coms.dart';
 import 'package:audioplayers/audioplayers.dart';
