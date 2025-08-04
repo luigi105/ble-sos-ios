@@ -651,27 +651,24 @@ Future<bool> startScanAndConnectSimple() async {
       return false;
     }
     
-    // ✅ USAR VARIABLE LOCAL NON-NULLABLE
-    final BluetoothDevice holyIotDevice = foundDevice;
-    
-    // Conectar
-    print("🔗 Intentando conectar con ${holyIotDevice.remoteId}...");
+    // ✅ AHORA foundDevice NO PUEDE SER NULL - usar operador !
+    print("🔗 Intentando conectar con ${foundDevice!.remoteId}...");
     
     try {
-      await holyIotDevice.connect(
+      await foundDevice!.connect(
         autoConnect: Platform.isIOS, // Solo autoConnect en iOS
         timeout: Duration(seconds: 20),
       );
       
       // Verificar conexión
-      BluetoothConnectionState state = await holyIotDevice.connectionState.first;
+      BluetoothConnectionState state = await foundDevice!.connectionState.first;
       if (state == BluetoothConnectionState.connected) {
         print("✅ Conexión exitosa!");
         
-        // ✅ ACTUALIZAR DATOS SIN AWAIT PROBLEMÁTICO
-        String deviceUuid = holyIotDevice.remoteId.toString();
+        // Actualizar datos
+        String deviceUuid = foundDevice!.remoteId.toString();
         
-        // Llamar setMacAddress pero sin await para evitar problemas
+        // Llamar setMacAddress sin await problemático
         BleData.setMacAddress(deviceUuid).then((_) {
           print("💾 UUID guardado: $deviceUuid");
         }).catchError((e) {
