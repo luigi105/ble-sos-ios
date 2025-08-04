@@ -439,134 +439,126 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
 
 // ✅ FUNCIÓN COMPLETA _initializeiOS() CORREGIDA para main.dart:
 
-  Future<void> _initializeiOS() async {
-    print("🍎 Inicializando estrategia iOS...");
-    
-    // ✅ DEBUGGING DE NOTIFICACIONES - PASO A PASO
-    await _debugNotificationSystemStepByStep();
-    
-    // Inicializar estados anteriores
-    previousConnectionState = BleData.isConnected;
-    previousLocationConfirmed = BleData.locationConfirmed;
-
-    locationService.initializeDeviceId().then((_) {
-      print("Device ID inicializado correctamente: ${BleData.deviceId}");
-
-      if (BleData.conBoton == 1) {
-        // ✅ INICIALIZAR IOSPlatformManager PRIMERO
-        IOSPlatformManager.initialize().then((_) {
-          print("✅ IOSPlatformManager inicializado");
-          
-          // ✅ DEBUGGING ADICIONAL DESPUÉS DE INICIALIZAR
-          _verifyNotificationSetupAfterInit();
-          
-          // Luego solicitar permisos
-          requestPermissions().then((_) {
-            Future.delayed(Duration(seconds: 3), () async {
-              await verifyPermissionsAfterStartup();
-              
-              bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-              
-              if (!locationAlwaysGranted) {
-                print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
-                if (_isMounted && navigatorKey.currentContext != null) {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                  );
-                }
-              } else {
-                print("✅ Permisos iOS configurados correctamente");
-              }
-            });
-            
-            // ✅ CONFIGURAR BLE para conBoton == 1
-            _setupiOSBLE();
-            
-            // ✅ SIEMPRE iniciar ubicación
-            if (!locationService.isUpdatingLocation) {
-              print("📍 Iniciando servicio de ubicación iOS...");
-              locationService.startLocationUpdates();
-            }
-          });
-        });
-      } else {
-        // ✅ MODO 2: Solo ubicación GPS
-        IOSPlatformManager.initialize().then((_) {
-          print("✅ IOSPlatformManager inicializado para modo GPS");
-          
-          // ✅ DEBUGGING PARA MODO GPS TAMBIÉN
-          _verifyNotificationSetupAfterInit();
-          
-          requestPermissions().then((_) {
-            Future.delayed(Duration(seconds: 3), () async {
-              await verifyPermissionsAfterStartup();
-              
-              bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
-              
-              if (!locationAlwaysGranted) {
-                print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
-                if (_isMounted && navigatorKey.currentContext != null) {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                  );
-                }
-              } else {
-                print("✅ Permisos iOS configurados correctamente para modo GPS");
-              }
-            });
-            
-            // ✅ SOLO iniciar ubicación (sin BLE)
-            if (!locationService.isUpdatingLocation) {
-              print("📍 Iniciando servicio de ubicación iOS (solo GPS)...");
-              locationService.startLocationUpdates();
-            }
-          });
-        });
-      }
-    });
-
-    print("✅ iOS inicializado con IOSPlatformManager");
-    
-    // ✅ ACTUALIZAR UI periódicamente
-Timer.periodic(const Duration(seconds: 10), (timer) async {
-  if (_isMounted) {
-    // ✅ SOLO actualizar permisos (sin notificaciones de prueba)
-    try {
-      String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
-      setState(() {
-        _notificationPermissionStatus = permissionStatus;
-      });
-    } catch (e) {
-      print("Error actualizando permisos: $e");
-    }
-    
-    // ✅ SOLO actualizar estado BLE
-    try {
-      BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
-      _bluetoothState = bleState.toString().split('.').last;
-    } catch (e) {
-      _bluetoothState = "Error: $e";
-    }
-    
-    // ✅ SOLO actualizar UI
-    setState(() {
-      sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
-      sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
-    });
-  }
-});
-    
-
+Future<void> _initializeiOS() async {
+  print("🍎 Inicializando estrategia iOS...");
   
-  // ✅ TIMER DE RECOVERY PARA DISCOVERY (CORREGIDO)
+  // Inicializar estados anteriores
+  previousConnectionState = BleData.isConnected;
+  previousLocationConfirmed = BleData.locationConfirmed;
+
+  locationService.initializeDeviceId().then((_) {
+    print("Device ID inicializado correctamente: ${BleData.deviceId}");
+
+    if (BleData.conBoton == 1) {
+      // ✅ INICIALIZAR IOSPlatformManager PRIMERO
+      IOSPlatformManager.initialize().then((_) {
+        print("✅ IOSPlatformManager inicializado");
+        
+        // ❌ ELIMINAR: _verifyNotificationSetupAfterInit(); // ESTA LÍNEA DEBE SER ELIMINADA
+        
+        // Luego solicitar permisos
+        requestPermissions().then((_) {
+          Future.delayed(Duration(seconds: 3), () async {
+            await verifyPermissionsAfterStartup();
+            
+            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+            
+            if (!locationAlwaysGranted) {
+              print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
+              if (_isMounted && navigatorKey.currentContext != null) {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
+              }
+            } else {
+              print("✅ Permisos iOS configurados correctamente");
+            }
+          });
+          
+          // ✅ CONFIGURAR BLE para conBoton == 1
+          _setupiOSBLE();
+          
+          // ✅ SIEMPRE iniciar ubicación
+          if (!locationService.isUpdatingLocation) {
+            print("📍 Iniciando servicio de ubicación iOS...");
+            locationService.startLocationUpdates();
+          }
+        });
+      });
+    } else {
+      // ✅ MODO 2: Solo ubicación GPS
+      IOSPlatformManager.initialize().then((_) {
+        print("✅ IOSPlatformManager inicializado para modo GPS");
+        
+        // ❌ ELIMINAR: _verifyNotificationSetupAfterInit(); // ESTA LÍNEA TAMBIÉN DEBE SER ELIMINADA
+        
+        requestPermissions().then((_) {
+          Future.delayed(Duration(seconds: 3), () async {
+            await verifyPermissionsAfterStartup();
+            
+            bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+            
+            if (!locationAlwaysGranted) {
+              print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
+              if (_isMounted && navigatorKey.currentContext != null) {
+                Navigator.push(
+                  navigatorKey.currentContext!,
+                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                );
+              }
+            } else {
+              print("✅ Permisos iOS configurados correctamente para modo GPS");
+            }
+          });
+          
+          // ✅ SOLO iniciar ubicación (sin BLE)
+          if (!locationService.isUpdatingLocation) {
+            print("📍 Iniciando servicio de ubicación iOS (solo GPS)...");
+            locationService.startLocationUpdates();
+          }
+        });
+      });
+    }
+  });
+
+  print("✅ iOS inicializado con IOSPlatformManager");
+  
+  // ✅ ACTUALIZAR UI periódicamente (SIN NOTIFICACIONES DE PRUEBA)
+  Timer.periodic(const Duration(seconds: 10), (timer) async {
+    if (_isMounted) {
+      // ✅ SOLO actualizar permisos
+      try {
+        String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
+        setState(() {
+          _notificationPermissionStatus = permissionStatus;
+        });
+      } catch (e) {
+        print("Error actualizando permisos: $e");
+      }
+      
+      // ✅ SOLO capturar estado de Bluetooth
+      try {
+        BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
+        _bluetoothState = bleState.toString().split('.').last;
+      } catch (e) {
+        _bluetoothState = "Error: $e";
+      }
+      
+      // ✅ SOLO actualizar UI
+      setState(() {
+        sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
+        sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
+      });
+    }
+  });
+  
+  // ✅ TIMER DE RECOVERY PARA DISCOVERY (sin cambios)
   Timer.periodic(Duration(seconds: 8), (timer) async {
     if (BleData.isConnected && _totalServices == 0 && BleData.conBoton == 1) {
       print("🔧 iOS: Servicios=0 pero conectado. Forzando discovery...");
       
       try {
-        // ✅ USAR AWAIT EN LUGAR DE .then()
         List<BluetoothDevice> devices = await FlutterBluePlus.connectedDevices;
         bool deviceFound = false;
         
@@ -579,31 +571,21 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
             print("📍 iOS: ¡Encontrado Holy-IOT! Ejecutando discoverServices...");
             deviceFound = true;
             
-            // Actualizar debug UI
             if (mounted) {
               setState(() {
                 _discoveryStatus = "Forzando discovery manual...";
               });
             }
             
-            // Llamar discoverServices directamente
             discoverServices(device, context, activateSos);
-            
-            // Cancelar timer después del primer intento exitoso
             timer.cancel();
             print("✅ iOS: Timer de recovery cancelado - discovery ejecutado");
             break;
           }
         }
         
-        // Si no encontramos Holy-IOT en dispositivos conectados
         if (!deviceFound) {
           print("⚠️ iOS: No se encontró Holy-IOT en ${devices.length} dispositivos conectados");
-          print("📋 iOS: Dispositivos conectados encontrados:");
-          for (var device in devices) {
-            print("   - '${device.platformName}' (${device.remoteId})");
-          }
-          
           if (mounted) {
             setState(() {
               _discoveryStatus = "Error: Holy-IOT no en ${devices.length} conectados";
@@ -621,19 +603,16 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
       }
       
     } else if (_totalServices > 0) {
-      // Si ya encontró servicios, cancelar el timer
       if (timer.isActive) {
         print("✅ iOS: Servicios encontrados ($_totalServices), cancelando timer de recovery");
         timer.cancel();
       }
     } else if (BleData.conBoton != 1) {
-      // Si no está en modo BLE, cancelar timer
       if (timer.isActive) {
         print("ℹ️ iOS: No está en modo BLE, cancelando timer de recovery");
         timer.cancel();
       }
     } else if (!BleData.isConnected) {
-      // Debug cuando no está conectado
       if (mounted) {
         setState(() {
           _discoveryStatus = "Esperando conexión BLE...";
@@ -643,10 +622,6 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
   });
   
   print("✅ iOS inicializado con timer de recovery para discovery");
-  
-  // ✅ DEBUG para verificar configuración
-  _debugiOSConfiguration();
-  _debugBLEConnection();
 }
 
 
