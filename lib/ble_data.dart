@@ -333,15 +333,16 @@ static void update({
           print("✅ BLE conectado - contador reiniciado");
           
           
-          // ✅ COMENTADO: Notificación de conexión no necesaria
-          if (firstBleConnection && connectionNotificationsEnabled && conBoton == 1) {
-            // CommunicationService().showBleConnectedNotification();
-            firstBleConnection = false;
-          }
-          else if (connectionNotificationsEnabled && conBoton == 1 && bleDisconnectionNotificationShown) {
-            // CommunicationService().showBleConnectedNotification();
-            bleDisconnectionNotificationShown = false;
-          }
+          // ✅ ACTIVAR notificaciones de reconexión
+        if (firstBleConnection && connectionNotificationsEnabled && conBoton == 1) {
+          print("🔔 Primera conexión BLE - NO mostrar notificación");
+          firstBleConnection = false;
+        }
+        else if (connectionNotificationsEnabled && conBoton == 1 && bleDisconnectionNotificationShown) {
+          print("🔔 Reconexión BLE detectada - pero se manejará en connectToDevice()");
+          // NO llamar aquí - se maneja en connectToDevice() con delay apropiado
+          // bleDisconnectionNotificationShown se resetea en connectToDevice()
+        }
           
           
         } else {

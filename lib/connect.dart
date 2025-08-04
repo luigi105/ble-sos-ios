@@ -125,7 +125,26 @@ void connectToDevice(BluetoothDevice device, BuildContext context, Function disc
               print("❌ iOS: Error en discoverServices forzado: $e");
             }
           });
-          
+
+            // 🔔 MANEJAR NOTIFICACIONES DE RECONEXIÓN
+            if (BleData.bleDisconnectionNotificationShown) {
+              print("🔔 iOS: Reconexión detectada (había notificación de desconexión)");
+              
+              // Resetear flag de desconexión
+              BleData.bleDisconnectionNotificationShown = false;
+              BleData.reconnectionAttemptCount = 0;
+              
+              // ✅ MOSTRAR NOTIFICACIÓN DE RECONEXIÓN con delay
+              Future.delayed(Duration(seconds: 1), () {
+                if (BleData.connectionNotificationsEnabled && BleData.conBoton == 1) {
+                  print("🔔 iOS: Mostrando notificación de reconexión...");
+                  CommunicationService().showBleConnectedNotification();
+                }
+              });
+            } else {
+              print("✅ iOS: Primera conexión (no mostrar notificación de reconexión)");
+            }
+                    
         } else if (newState == BluetoothConnectionState.disconnected) {
           _lastBleError = "Desconectado iOS - autoConnect activo";
           print("⚠️ iOS: Dispositivo desconectado - iOS intentará reconectar automáticamente");
