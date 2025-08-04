@@ -560,8 +560,6 @@ Future<void> _initializeiOS() async {
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado");
         
-        // ❌ ELIMINAR: _verifyNotificationSetupAfterInit(); // ESTA LÍNEA DEBE SER ELIMINADA
-        
         // Luego solicitar permisos
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {
@@ -579,11 +577,11 @@ Future<void> _initializeiOS() async {
               }
             } else {
               print("✅ Permisos iOS configurados correctamente");
+              
+              // ✅ NUEVO: Intentar conexión automática después de verificar permisos
+              _attemptAutoConnection();
             }
           });
-          
-          // ✅ CONFIGURAR BLE para conBoton == 1
-          _setupiOSBLE();
           
           // ✅ SIEMPRE iniciar ubicación
           if (!locationService.isUpdatingLocation) {
@@ -593,11 +591,9 @@ Future<void> _initializeiOS() async {
         });
       });
     } else {
-      // ✅ MODO 2: Solo ubicación GPS
+      // ✅ MODO 2: Solo ubicación GPS (sin cambios)
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado para modo GPS");
-        
-        // ❌ ELIMINAR: _verifyNotificationSetupAfterInit(); // ESTA LÍNEA TAMBIÉN DEBE SER ELIMINADA
         
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {
@@ -630,10 +626,9 @@ Future<void> _initializeiOS() async {
 
   print("✅ iOS inicializado con IOSPlatformManager");
   
-  // ✅ ACTUALIZAR UI periódicamente (SIN NOTIFICACIONES DE PRUEBA)
+  // ✅ RESTO DEL CÓDIGO EXISTENTE (timers, etc.) sin cambios
   Timer.periodic(const Duration(seconds: 10), (timer) async {
     if (_isMounted) {
-      // ✅ SOLO actualizar permisos
       try {
         String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
         setState(() {
@@ -643,7 +638,6 @@ Future<void> _initializeiOS() async {
         print("Error actualizando permisos: $e");
       }
       
-      // ✅ SOLO capturar estado de Bluetooth
       try {
         BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
         _bluetoothState = bleState.toString().split('.').last;
@@ -651,7 +645,6 @@ Future<void> _initializeiOS() async {
         _bluetoothState = "Error: $e";
       }
       
-      // ✅ SOLO actualizar UI
       setState(() {
         sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
         sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
@@ -659,7 +652,7 @@ Future<void> _initializeiOS() async {
     }
   });
   
-  // ✅ TIMER DE RECOVERY PARA DISCOVERY (sin cambios)
+  // ✅ TIMER DE RECOVERY para discovery (código existente sin cambios)
   Timer.periodic(Duration(seconds: 8), (timer) async {
     if (BleData.isConnected && _totalServices == 0 && BleData.conBoton == 1) {
       print("🔧 iOS: Servicios=0 pero conectado. Forzando discovery...");
@@ -728,6 +721,67 @@ Future<void> _initializeiOS() async {
   });
   
   print("✅ iOS inicializado con timer de recovery para discovery");
+}
+
+Future<void> _attemptAutoConnection() async {
+  // Solo intentar si BLE está habilitado y no estamos ya conectados
+  if (BleData.conBoton != 1 || BleData.isConnected) {
+    print("🍎 iOS: No se requiere auto-conexión (conBoton=${BleData.conBoton}, conectado=${BleData.isConnected})");
+    return;
+  }
+  
+  print("🍎 === INICIANDO AUTO-CONEXIÓN iOS ===");
+  
+  try {
+    // Verificar Bluetooth primero
+    BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      print("🍎 Auto-conexión cancelada: Bluetooth apagado");
+      return;
+    }
+    
+    // Pequeña pausa para que iOS se estabilice
+    await Future.delayed(Duration(seconds: 2));
+    
+    print("🍎 Ejecutando startScanAndConnect() automáticamente...");
+    
+    // ✅ Usar la función original que ya sabemos que funciona
+    bool success = await startScanAndConnect();
+    
+    if (success) {
+      print("🎉 iOS: Auto-conexión EXITOSA!");
+      
+      // Actualizar UI si está montada
+      if (_isMounted) {
+        setState(() {
+          sosButtonColor = Colors.green;
+          sosButtonText = "Alerta SOS";
+        });
+      }
+      
+      // Mostrar notificación de éxito (opcional)
+      if (_isMounted && navigatorKey.currentContext != null) {
+        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+          SnackBar(
+            content: Text("🎉 Dispositivo Holy-IOT conectado automáticamente"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      
+    } else {
+      print("⚠️ iOS: Auto-conexión falló - el usuario puede usar el botón manual");
+      
+      // No mostrar error en auto-conexión, el usuario puede intentar manualmente
+    }
+    
+  } catch (e) {
+    print("❌ iOS: Error en auto-conexión: $e");
+    // No mostrar error en pantalla para auto-conexión
+  }
+  
+  print("🍎 === FIN AUTO-CONEXIÓN iOS ===");
 }
 
 
