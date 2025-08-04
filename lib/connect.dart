@@ -114,6 +114,17 @@ void connectToDevice(BluetoothDevice device, BuildContext context, Function disc
           );
           BleData.saveConnectionState(true);
           print("✅ iOS: Conexión confirmada y guardada");
+
+            print("🔧 iOS: Forzando discoverServices (primera conexión o reconexión)");
+          Future.delayed(Duration(seconds: 2), () async {
+            try {
+              print("🔧 iOS: Ejecutando discoverServices...");
+              discoverServices(device, context, onSosActivated);
+              print("✅ iOS: discoverServices completado");
+            } catch (e) {
+              print("❌ iOS: Error en discoverServices forzado: $e");
+            }
+          });
           
         } else if (newState == BluetoothConnectionState.disconnected) {
           _lastBleError = "Desconectado iOS - autoConnect activo";
