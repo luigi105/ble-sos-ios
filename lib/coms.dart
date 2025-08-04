@@ -350,15 +350,42 @@ Future<void> showBleDisconnectedNotification() async {
   }
 }
 
-// ✅ FUNCIÓN CORREGIDA: showBleConnectedNotification() con timing
-/*
 Future<void> showBleConnectedNotification() async {
-  // ✅ COMENTADO: Notificación de conexión no necesaria
-  // Solo mantener para referencia futura
-  print("🔕 Notificación de conexión deshabilitada - Solo desconexión es importante");
-  return;
+  if (!BleData.bleNotificationsEnabled) {
+    print("🔕 Notificaciones BLE desactivadas");
+    return;
+  }
+  
+  try {
+    print("🔄 Mostrando notificación de conexión BLE...");
+    
+    if (Platform.isAndroid) {
+      await _notificationChannel.invokeMethod('showBleConnectedNotification');
+    } 
+    else if (Platform.isIOS) {
+      // ✅ Sonido primero (más corto para conexión)
+      if (BleData.sosSoundEnabled) {
+        final AudioPlayer connectPlayer = AudioPlayer();
+        await connectPlayer.play(AssetSource("sounds/alerta_sos.mp3"));
+        Timer(Duration(seconds: 1), () {
+          connectPlayer.stop();
+          connectPlayer.dispose();
+        });
+      }
+      
+      // ✅ Notificación después
+      await Future.delayed(Duration(milliseconds: 300));
+      await IOSPlatformManager.showCriticalBleNotification(
+        "🔵 BLE Conectado", 
+        "Dispositivo SOS conectado y funcionando correctamente",
+        isDisconnection: false
+      );
+    }
+    
+  } catch (e) {
+    print("❌ Error notificación conexión: $e");
+  }
 }
-*/
 
 
 

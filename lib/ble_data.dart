@@ -332,7 +332,7 @@ static void update({
           reconnectionAttemptCount = 0;
           print("✅ BLE conectado - contador reiniciado");
           
-          /*
+          
           // ✅ COMENTADO: Notificación de conexión no necesaria
           if (firstBleConnection && connectionNotificationsEnabled && conBoton == 1) {
             // CommunicationService().showBleConnectedNotification();
@@ -342,7 +342,7 @@ static void update({
             // CommunicationService().showBleConnectedNotification();
             bleDisconnectionNotificationShown = false;
           }
-          */
+          
           
         } else {
           // ✅ MANTENER: Solo notificación de desconexión

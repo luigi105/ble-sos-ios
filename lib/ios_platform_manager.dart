@@ -414,9 +414,8 @@ static Future<void> showStatusNotification(String message) async {
 
 static Future<void> showCriticalBleNotification(String title, String message, {bool isDisconnection = false}) async {
   try {
-    print("🔔 Enviando notificación BLE: $title");
+    print("🔔 Enviando notificación BLE con badge: $title");
     
-    // ✅ Verificar inicialización
     if (_localNotifications == null) {
       await _setupLocalNotifications();
       await Future.delayed(Duration(seconds: 1));
@@ -427,10 +426,8 @@ static Future<void> showCriticalBleNotification(String title, String message, {b
       return;
     }
     
-    // ✅ Esperar estabilización
     await Future.delayed(Duration(milliseconds: 500));
     
-    // ✅ ID único
     int notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     
     await _localNotifications!.show(
@@ -440,17 +437,18 @@ static Future<void> showCriticalBleNotification(String title, String message, {b
       const NotificationDetails(
         iOS: DarwinNotificationDetails(
           presentAlert: true,
-          presentBadge: true,
+          presentBadge: true, // ✅ IMPORTANTE: Badge habilitado
           presentSound: true,
           sound: 'default',
           interruptionLevel: InterruptionLevel.critical,
           categoryIdentifier: 'BLE_CRITICAL',
           threadIdentifier: 'ble_critical',
+          badgeNumber: 1, // ✅ NUEVO: Número específico en badge
         ),
       ),
     );
     
-    print("✅ Notificación BLE enviada: $title");
+    print("✅ Notificación BLE enviada con badge: $title");
     
   } catch (e) {
     print("❌ Error notificación BLE: $e");
@@ -579,7 +577,7 @@ static Future<void> showPersistentMonitoringNotification() async {
     
     if (_localNotifications == null) {
       await _setupLocalNotifications();
-      await Future.delayed(Duration(seconds: 1));
+      await Future.delayed(Duration(seconds: 2)); // ✅ Esperar más tiempo
     }
     
     if (_localNotifications == null) {
@@ -587,33 +585,26 @@ static Future<void> showPersistentMonitoringNotification() async {
       return;
     }
     
-    // ✅ ID fijo para notificación persistente
     const int persistentNotificationId = 1000;
-    
-    String title = "🔵 Monitoreo BLE Activo";
-    String message = "Sistema SOS operativo - Dispositivo monitoreado";
-    
-    // ✅ Configuración para notificación persistente
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: false, // ✅ No mostrar alerta emergente
-      presentBadge: false, // ✅ No mostrar badge
-      presentSound: false, // ✅ Sin sonido
-      interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir
-      categoryIdentifier: 'MONITORING_PERSISTENT',
-      threadIdentifier: 'monitoring',
-      subtitle: 'Servicio de Emergencia',
-    );
-    
-    const NotificationDetails details = NotificationDetails(iOS: iosDetails);
     
     await _localNotifications!.show(
       persistentNotificationId,
-      title,
-      message,
-      details,
+      "🔵 Monitoreo BLE Activo",
+      "Sistema SOS operativo - Dispositivo monitoreado 24/7",
+      const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true, // ✅ CAMBIAR: Mostrar alerta para que aparezca
+          presentBadge: false, // ✅ Sin badge para notificación persistente
+          presentSound: false, // ✅ Sin sonido
+          interruptionLevel: InterruptionLevel.passive,
+          categoryIdentifier: 'MONITORING_PERSISTENT',
+          threadIdentifier: 'monitoring',
+          subtitle: 'Servicio de Emergencia',
+        ),
+      ),
     );
     
-    print("✅ Notificación persistente de monitoreo creada");
+    print("✅ Notificación persistente de monitoreo creada y visible");
     
   } catch (e) {
     print("❌ Error creando notificación persistente: $e");

@@ -532,7 +532,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     // ✅ ACTUALIZAR UI periódicamente
 Timer.periodic(const Duration(seconds: 10), (timer) async {
   if (_isMounted) {
-    // ✅ ACTUALIZAR ESTADO DE PERMISOS CADA 10 SEGUNDOS
+    // ✅ SOLO actualizar permisos (sin notificaciones de prueba)
     try {
       String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
       setState(() {
@@ -542,7 +542,7 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
       print("Error actualizando permisos: $e");
     }
     
-    // Resto del código existente del timer...
+    // ✅ SOLO actualizar estado BLE
     try {
       BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
       _bluetoothState = bleState.toString().split('.').last;
@@ -550,6 +550,7 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
       _bluetoothState = "Error: $e";
     }
     
+    // ✅ SOLO actualizar UI
     setState(() {
       sosButtonColor = BleData.locationConfirmed ? Colors.green : Colors.grey;
       sosButtonText = BleData.locationConfirmed ? "Alerta SOS" : "Conectando...";
@@ -557,12 +558,7 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
   }
 });
     
-    // ✅ TIMER PARA PRUEBAS AUTOMÁTICAS DE NOTIFICACIÓN (cada 30 segundos)
-    Timer.periodic(Duration(seconds: 30), (timer) async {
-      if (_isMounted) {
-        await _testNotificationsPeriodically();
-      }
-    });
+
   
   // ✅ TIMER DE RECOVERY PARA DISCOVERY (CORREGIDO)
   Timer.periodic(Duration(seconds: 8), (timer) async {
@@ -654,29 +650,21 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
 }
 
 
-  // ✅ NUEVA FUNCIÓN: Debug paso a paso del sistema de notificaciones
- Future<void> _debugNotificationSystemStepByStep() async {
-  if (mounted) setState(() => _notificationDebugStatus = "Iniciando debugging...");
+Future<void> _debugNotificationSystemStepByStep() async {
+  if (mounted) setState(() => _notificationDebugStatus = "Inicializando...");
   
   try {
-    // Paso 1: Verificar plataforma
-    if (mounted) setState(() => _notificationDebugStatus = "Verificando plataforma iOS...");
-    await Future.delayed(Duration(seconds: 1));
-    
+    // ✅ SOLO verificar plataforma
     if (!Platform.isIOS) {
       if (mounted) setState(() => _notificationDebugStatus = "ERROR: No es iOS");
       return;
     }
     
-    // Paso 2: Verificar permisos básicos CORREGIDO
-    if (mounted) setState(() => _notificationDebugStatus = "Verificando permisos...");
-    
-    // ✅ USAR LA NUEVA FUNCIÓN
+    // ✅ SOLO verificar permisos (sin notificaciones de prueba)
     String permissionStatus = await IOSPlatformManager.checkCurrentPermissionStatus();
     if (mounted) setState(() => _notificationPermissionStatus = permissionStatus);
     
-    // Paso 3: Intentar inicializar IOSPlatformManager
-    if (mounted) setState(() => _notificationDebugStatus = "Inicializando IOSPlatformManager...");
+    // ✅ SOLO verificar inicialización
     try {
       await IOSPlatformManager.initialize();
       if (mounted) setState(() => _iosManagerStatus = "Inicializado OK");
@@ -684,101 +672,22 @@ Timer.periodic(const Duration(seconds: 10), (timer) async {
       if (mounted) setState(() => _iosManagerStatus = "Error: $e");
     }
     
-    // Paso 4: Verificar notificaciones locales
-    if (mounted) setState(() => _notificationDebugStatus = "Verificando notificaciones locales...");
-    await _checkLocalNotificationStatus();
-    
-    if (mounted) setState(() => _notificationDebugStatus = "Debugging completado");
+    if (mounted) setState(() => _notificationDebugStatus = "Sistema listo");
     
   } catch (e) {
     if (mounted) setState(() {
-      _notificationDebugStatus = "Error en debugging: $e";
+      _notificationDebugStatus = "Error: $e";
       _lastNotificationError = e.toString();
     });
   }
 }
 
-  // ✅ NUEVA FUNCIÓN: Verificar estado de notificaciones locales
-  Future<void> _checkLocalNotificationStatus() async {
-    try {
-      // Intentar mostrar una notificación de prueba simple
-      if (mounted) setState(() => _localNotificationStatus = "Probando notificación simple...");
-      
-      await IOSPlatformManager.showStatusNotification("🧪 Prueba de notificación básica");
-      
-      if (mounted) setState(() => _localNotificationStatus = "Notificación básica enviada");
-      
-    } catch (e) {
-      if (mounted) setState(() => _localNotificationStatus = "Error: $e");
-    }
-  }
 
-  // ✅ NUEVA FUNCIÓN: Verificar configuración después de inicializar
-  Future<void> _verifyNotificationSetupAfterInit() async {
-    await Future.delayed(Duration(seconds: 2));
-    
-    try {
-      if (mounted) setState(() => _notificationDebugStatus = "Verificando configuración post-init...");
-      
-      // Probar notificación crítica
-      await IOSPlatformManager.showCriticalBleNotification(
-        "🧪 Prueba Post-Init", 
-        "Notificación de verificación después de inicializar",
-        isDisconnection: false
-      );
-      
-      _notificationAttempts++;
-      _notificationSuccesses++;
-      
-      if (mounted) setState(() {
-        _lastNotificationTest = "Post-init OK ${DateTime.now().toString().substring(11, 19)}";
-        _notificationDebugStatus = "Configuración verificada";
-      });
-      
-    } catch (e) {
-      _notificationAttempts++;
-      if (mounted) setState(() {
-        _lastNotificationTest = "Post-init ERROR: $e";
-        _lastNotificationError = e.toString();
-      });
-    }
-  }
+ 
 
-  // ✅ NUEVA FUNCIÓN: Pruebas periódicas de notificación
-  Future<void> _testNotificationsPeriodically() async {
-    try {
-      _notificationAttempts++;
-      
-      if (mounted) setState(() => _notificationDebugStatus = "Prueba periódica #$_notificationAttempts");
-      
-      // Alternar entre tipos de notificación
-      if (_notificationAttempts % 2 == 0) {
-        await IOSPlatformManager.showStatusNotification(
-          "🔄 Prueba periódica #$_notificationAttempts - ${DateTime.now().toString().substring(11, 19)}"
-        );
-      } else {
-        await IOSPlatformManager.showCriticalBleNotification(
-          "🔄 Prueba Crítica #$_notificationAttempts", 
-          "Prueba crítica periódica - ${DateTime.now().toString().substring(11, 19)}",
-          isDisconnection: false
-        );
-      }
-      
-      _notificationSuccesses++;
-      
-      if (mounted) setState(() {
-        _lastNotificationTest = "Periódica #$_notificationAttempts OK";
-        _notificationDebugStatus = "Prueba periódica exitosa";
-      });
-      
-    } catch (e) {
-      if (mounted) setState(() {
-        _lastNotificationTest = "Periódica #$_notificationAttempts ERROR: $e";
-        _lastNotificationError = e.toString();
-      });
-    }
-  }
 
+
+ 
 // ✅ FUNCIÓN DEBUG para iOS
 Future<void> _debugiOSConfiguration() async {
   print("🧪 === DEBUG CONFIGURACIÓN iOS ===");
