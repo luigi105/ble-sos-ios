@@ -613,14 +613,14 @@ Future<bool> startScanAndConnectSimple() async {
     // Escaneo
     await FlutterBluePlus.startScan(timeout: Duration(seconds: 20));
     
-    BluetoothDevice? holyIotDevice;
+    BluetoothDevice? foundDevice;
     StreamSubscription? subscription;
     Completer<BluetoothDevice?> deviceCompleter = Completer<BluetoothDevice?>();
     
     subscription = FlutterBluePlus.scanResults.listen((results) {
       for (var result in results) {
         if (result.device.platformName.toLowerCase() == "holy-iot") {
-          holyIotDevice = result.device;
+          foundDevice = result.device;
           print("✅ Holy-IOT encontrado: ${result.device.remoteId}");
           
           FlutterBluePlus.stopScan();
@@ -643,15 +643,18 @@ Future<bool> startScanAndConnectSimple() async {
       }
     });
     
-    holyIotDevice = await deviceCompleter.future;
+    foundDevice = await deviceCompleter.future;
     
-    // ✅ VERIFICACIÓN NULL CORREGIDA
-    if (holyIotDevice == null) {
+    // ✅ VERIFICACIÓN NULL Y RETURN TEMPRANO
+    if (foundDevice == null) {
       print("❌ Holy-IOT no encontrado");
       return false;
     }
     
-    // Conectar - AHORA holyIotDevice NO PUEDE SER NULL
+    // ✅ USAR VARIABLE LOCAL NON-NULLABLE
+    final BluetoothDevice holyIotDevice = foundDevice;
+    
+    // Conectar
     print("🔗 Intentando conectar con ${holyIotDevice.remoteId}...");
     
     try {
@@ -665,15 +668,23 @@ Future<bool> startScanAndConnectSimple() async {
       if (state == BluetoothConnectionState.connected) {
         print("✅ Conexión exitosa!");
         
-        // Actualizar datos - holyIotDevice ya no puede ser null aquí
+        // ✅ ACTUALIZAR DATOS SIN AWAIT PROBLEMÁTICO
         String deviceUuid = holyIotDevice.remoteId.toString();
-        BleData.setMacAddress(deviceUuid);
+        
+        // Llamar setMacAddress pero sin await para evitar problemas
+        BleData.setMacAddress(deviceUuid).then((_) {
+          print("💾 UUID guardado: $deviceUuid");
+        }).catchError((e) {
+          print("⚠️ Error guardando UUID: $e");
+        });
+        
+        // Actualizar estado inmediatamente
         BleData.update(
           newMacAddress: deviceUuid,
           connectionStatus: true,
         );
         
-        print("💾 UUID guardado y conexión confirmada: $deviceUuid");
+        print("✅ Conexión confirmada: $deviceUuid");
         return true;
       } else {
         print("❌ Conexión falló - Estado: $state");
