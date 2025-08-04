@@ -559,6 +559,17 @@ Future<void> _initializeiOS() async {
       // ✅ INICIALIZAR IOSPlatformManager PRIMERO
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado");
+
+       // 🔔 MOSTRAR NOTIFICACIÓN PERSISTENTE después de inicializar
+      Future.delayed(Duration(seconds: 3), () async {
+        try {
+          print("🔔 Creando notificación persistente de servicio BLE...");
+          await IOSPlatformManager.showPersistentMonitoringNotification();
+          print("✅ Notificación persistente BLE creada");
+        } catch (e) {
+          print("❌ Error creando notificación persistente BLE: $e");
+        }
+      });
         
         // Luego solicitar permisos
         requestPermissions().then((_) {
@@ -1277,6 +1288,16 @@ Future<void> _initializeAndroid() async {
     print("💓 Sistema HEARTBEAT detenido");
     
     if (Platform.isIOS) {
+
+      // 🔔 ELIMINAR NOTIFICACIÓN PERSISTENTE AL CERRAR APP
+    print("🔔 Eliminando notificación persistente de servicio...");
+    IOSPlatformManager.removePersistentMonitoringNotification().then((_) {
+      print("✅ Notificación persistente eliminada al cerrar app");
+    }).catchError((e) {
+      print("❌ Error eliminando notificación persistente: $e");
+    });
+
+
     IOSPlatformManager.dispose();
     print("✅ Dispose iOS completado con limpieza de notificación persistente");
     } else {

@@ -573,15 +573,16 @@ static Future<String> checkCurrentPermissionStatus() async {
 // ✅ NUEVA FUNCIÓN: Mostrar notificación persistente de monitoreo
 static Future<void> showPersistentMonitoringNotification() async {
   try {
-    print("📌 Creando notificación persistente de monitoreo...");
+    print("📌 Creando notificación persistente de servicio BLE...");
     
     if (_localNotifications == null) {
+      print("⚠️ LocalNotifications no inicializado, inicializando...");
       await _setupLocalNotifications();
-      await Future.delayed(Duration(seconds: 2)); // ✅ Esperar más tiempo
+      await Future.delayed(Duration(seconds: 2)); // ✅ Esperar inicialización
     }
     
     if (_localNotifications == null) {
-      print("❌ No se pudo inicializar para notificación persistente");
+      print("❌ No se pudo inicializar LocalNotifications para notificación persistente");
       return;
     }
     
@@ -589,22 +590,22 @@ static Future<void> showPersistentMonitoringNotification() async {
     
     await _localNotifications!.show(
       persistentNotificationId,
-      "🔵 Monitoreo BLE Activo",
-      "Sistema SOS operativo - Dispositivo monitoreado 24/7",
+      "🔵 BLE SOS - Servicio Activo", // ✅ TÍTULO CLARO
+      "Sistema de emergencia operativo 24/7 - Dispositivo Holy-IOT monitoreado",
       const NotificationDetails(
         iOS: DarwinNotificationDetails(
-          presentAlert: true, // ✅ CAMBIAR: Mostrar alerta para que aparezca
-          presentBadge: false, // ✅ Sin badge para notificación persistente
+          presentAlert: true,  // ✅ CRÍTICO: Mostrar alerta para que aparezca
+          presentBadge: false, // ✅ Sin badge 
           presentSound: false, // ✅ Sin sonido
-          interruptionLevel: InterruptionLevel.passive,
-          categoryIdentifier: 'MONITORING_PERSISTENT',
-          threadIdentifier: 'monitoring',
-          subtitle: 'Servicio de Emergencia',
+          interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir usuario
+          categoryIdentifier: 'BLE_SERVICE_PERSISTENT',
+          threadIdentifier: 'ble_service',
+          subtitle: 'Servicio de Emergencia BLE',
         ),
       ),
     );
     
-    print("✅ Notificación persistente de monitoreo creada y visible");
+    print("✅ Notificación persistente 'BLE SOS - Servicio Activo' creada y visible");
     
   } catch (e) {
     print("❌ Error creando notificación persistente: $e");
@@ -614,10 +615,10 @@ static Future<void> showPersistentMonitoringNotification() async {
 // ✅ NUEVA FUNCIÓN: Remover notificación persistente
 static Future<void> removePersistentMonitoringNotification() async {
   try {
-    print("📌 Removiendo notificación persistente de monitoreo...");
+    print("📌 Removiendo notificación persistente de servicio...");
     
     if (_localNotifications == null) {
-      print("⚠️ Notificaciones no inicializadas para remover persistente");
+      print("⚠️ LocalNotifications no inicializadas para remover persistente");
       return;
     }
     
@@ -625,7 +626,7 @@ static Future<void> removePersistentMonitoringNotification() async {
     const int persistentNotificationId = 1000;
     await _localNotifications!.cancel(persistentNotificationId);
     
-    print("✅ Notificación persistente removida");
+    print("✅ Notificación persistente 'BLE SOS - Servicio Activo' removida");
     
   } catch (e) {
     print("❌ Error removiendo notificación persistente: $e");
