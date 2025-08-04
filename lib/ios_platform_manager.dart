@@ -15,6 +15,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 
 class IOSPlatformManager {
+  static bool _persistentNotificationShown = false;
   static bool _isInitialized = false;
   static StreamSubscription<Position>? _locationSubscription;
   static FlutterLocalNotificationsPlugin? _localNotifications;
@@ -37,19 +38,23 @@ static Future<void> initialize() async {
     // 3. Configurar manejo de ciclo de vida de la app
     _setupAppLifecycleHandling();
     
-    // ✅ 4. NUEVO: Crear notificación persistente de monitoreo
-    if (BleData.conBoton == 1) { // Solo si BLE está habilitado
+    // ✅ 4. VERIFICAR SI NECESITA CREAR NOTIFICACIÓN PERSISTENTE
+    if (BleData.conBoton == 1 && !_persistentNotificationShown) {
+      print("🔔 Creando notificación persistente (primera vez o después de dispose)");
       await Future.delayed(Duration(seconds: 2)); // Esperar inicialización
       await showPersistentMonitoringNotification();
+    } else if (BleData.conBoton == 1 && _persistentNotificationShown) {
+      print("✅ Notificación persistente ya fue creada");
     }
     
     _isInitialized = true;
-    print("✅ iOS Platform Manager inicializado con notificación persistente");
+    print("✅ iOS Platform Manager inicializado correctamente");
     
   } catch (e) {
     print("❌ Error inicializando iOS Platform Manager: $e");
   }
 }
+
   
   // ✅ CONFIGURAR NOTIFICACIONES LOCALES
   static Future<void> _setupLocalNotifications() async {
@@ -571,107 +576,62 @@ static Future<String> checkCurrentPermissionStatus() async {
 }
 
 // ✅ NUEVA FUNCIÓN: Mostrar notificación persistente de monitoreo
+
 static Future<void> showPersistentMonitoringNotification() async {
   try {
-    print("📌 === INICIANDO CREACIÓN NOTIFICACIÓN PERSISTENTE ===");
+    print("📌 Creando notificación VERDADERAMENTE persistente...");
     
-    // ✅ FORZAR INICIALIZACIÓN MÚLTIPLES VECES
-    for (int attempt = 1; attempt <= 3; attempt++) {
-      print("📌 Intento $attempt/3 de inicialización...");
-      
-      if (_localNotifications == null) {
-        print("⚠️ LocalNotifications null, forzando inicialización...");
-        await _setupLocalNotifications();
-        await Future.delayed(Duration(seconds: 2));
-      }
-      
-      if (_localNotifications != null) {
-        print("✅ LocalNotifications inicializado en intento $attempt");
-        break;
-      } else {
-        print("❌ Intento $attempt falló, reintentando...");
-        await Future.delayed(Duration(seconds: 1));
-      }
+    if (_localNotifications == null) {
+      await _setupLocalNotifications();
+      await Future.delayed(Duration(seconds: 2));
     }
     
     if (_localNotifications == null) {
-      print("❌ CRÍTICO: No se pudo inicializar LocalNotifications después de 3 intentos");
+      print("❌ No se pudo inicializar para notificación persistente");
       return;
     }
     
-    // ✅ VERIFICAR PERMISOS EXPLÍCITAMENTE
-    print("📌 Verificando permisos de notificaciones...");
+    // ✅ ELIMINAR CUALQUIER NOTIFICACIÓN PREVIA PRIMERO
+    const int persistentNotificationId = 1000;
     try {
-      final IOSFlutterLocalNotificationsPlugin? iosImplementation =
-          _localNotifications!.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-      
-      if (iosImplementation != null) {
-        final bool? granted = await iosImplementation.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-          critical: true,
-        );
-        print("📌 Permisos de notificación: ${granted ?? 'null'}");
-        
-        if (granted != true) {
-          print("❌ Permisos de notificación denegados o null");
-          return;
-        }
-      }
+      await _localNotifications!.cancel(persistentNotificationId);
+      await Future.delayed(Duration(milliseconds: 500)); // Pausa para limpieza
+      print("🗑️ Notificación previa eliminada");
     } catch (e) {
-      print("⚠️ Error verificando permisos: $e");
+      print("ℹ️ No había notificación previa: $e");
     }
     
-    // ✅ INTENTAR CREAR NOTIFICACIÓN
-    const int persistentNotificationId = 1000;
-    
-    print("📌 Creando notificación con ID $persistentNotificationId...");
-    
+    // ✅ CREAR NOTIFICACIÓN PERSISTENTE QUE NO SE PUEDE ELIMINAR
     await _localNotifications!.show(
       persistentNotificationId,
       "🔵 BLE SOS - Servicio Activo",
-      "Sistema de emergencia operativo 24/7 - Dispositivo Holy-IOT monitoreado",
+      "Sistema de emergencia operativo 24/7 - Dispositivo monitoreado",
       const NotificationDetails(
         iOS: DarwinNotificationDetails(
-          presentAlert: true,  // ✅ MOSTRAR ALERTA
-          presentBadge: true,  // ✅ CAMBIAR: Habilitar badge para ver si aparece
+          presentAlert: true,
+          presentBadge: false, // ✅ Sin badge para evitar confusión
           presentSound: false, // ✅ Sin sonido
-          interruptionLevel: InterruptionLevel.timeSensitive, // ✅ CAMBIAR: Más prominente
+          interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir
           categoryIdentifier: 'BLE_SERVICE_PERSISTENT',
-          threadIdentifier: 'ble_service',
-          subtitle: 'Servicio de Emergencia BLE',
-          badgeNumber: 1, // ✅ AGREGAR: Número en badge
+          threadIdentifier: 'ble_service_persistent', // ✅ Thread único
+          subtitle: 'Servicio Activo',
+          
+          // ✅ CRÍTICO: Configuraciones para persistencia
+          attachments: null, // Sin adjuntos
+          
+          // ✅ NO agregar actions que puedan causar dismiss
         ),
       ),
     );
     
-    print("✅ show() ejecutado exitosamente");
+    print("✅ Notificación persistente creada con ID $persistentNotificationId");
     
-    // ✅ VERIFICAR QUE SE CREÓ
+    // ✅ VERIFICAR QUE SE CREÓ Y MARCAR COMO CREADA
     await Future.delayed(Duration(seconds: 1));
-    
-    try {
-      final List<PendingNotificationRequest> pendingNotifications = 
-          await _localNotifications!.pendingNotificationRequests();
-      print("📌 Notificaciones pendientes: ${pendingNotifications.length}");
-      
-      for (var notification in pendingNotifications) {
-        print("   - ID: ${notification.id}, Título: ${notification.title}");
-      }
-      
-      bool found = pendingNotifications.any((n) => n.id == persistentNotificationId);
-      print("📌 ¿Notificación persistente encontrada?: $found");
-      
-    } catch (e) {
-      print("⚠️ Error verificando notificaciones pendientes: $e");
-    }
-    
-    print("✅ === NOTIFICACIÓN PERSISTENTE COMPLETADA ===");
+    _persistentNotificationShown = true; // ✅ Flag para control
     
   } catch (e) {
-    print("❌ Error CRÍTICO creando notificación persistente: $e");
-    print("❌ Stack trace: ${e.toString()}");
+    print("❌ Error creando notificación persistente: $e");
   }
 }
 
@@ -701,14 +661,17 @@ static Future<void> removePersistentMonitoringNotification() async {
 static Future<void> dispose() async {
   print("🧹 Limpiando recursos iOS...");
   
-  // ✅ NUEVO: Remover notificación persistente al cerrar
+  // ✅ Remover notificación persistente al cerrar
   await removePersistentMonitoringNotification();
   
   await _locationSubscription?.cancel();
   _locationSubscription = null;
   _isInitialized = false;
   
-  print("✅ Recursos iOS limpiados y notificación persistente removida");
+  // ✅ RESETEAR FLAG para permitir crear notificación en próximo inicio
+  _persistentNotificationShown = false;
+  
+  print("✅ Recursos iOS limpiados y flag reseteado");
 }
   
   // ✅ VERIFICAR SI ESTÁ EJECUTÁNDOSE EN iOS

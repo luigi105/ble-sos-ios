@@ -561,6 +561,7 @@ Future<void> _initializeiOS() async {
         print("✅ IOSPlatformManager inicializado");
 
        // 🔔 MOSTRAR NOTIFICACIÓN PERSISTENTE después de inicializar
+        /*
       Future.delayed(Duration(seconds: 3), () async {
         try {
           print("🔔 Creando notificación persistente de servicio BLE...");
@@ -570,6 +571,7 @@ Future<void> _initializeiOS() async {
           print("❌ Error creando notificación persistente BLE: $e");
         }
       });
+      */
         
         // Luego solicitar permisos
         requestPermissions().then((_) {
