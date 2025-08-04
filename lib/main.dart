@@ -739,35 +739,36 @@ Future<void> _debugBLEConnection() async {
 Future<void> _setupiOSBLE() async {
   print("🍎 === CONFIGURANDO BLE PARA iOS ===");
   
-  // Verificar MAC Address
-  if (BleData.macAddress == "N/A" || BleData.macAddress.isEmpty) {
-    print("❌ ERROR: No hay MAC address configurado");
-    print("   MAC actual: '${BleData.macAddress}'");
-    print("   ¿Se ejecutó fetchMacAddress correctamente?");
-    return;
+  // ✅ NUEVO: Debug del estado antes de conectar
+  BleData.debugConnectionState();
+  
+  // ✅ VERIFICAR si tenemos UUID temporal
+  if (BleData.needsUuidUpdate()) {
+    print("⚠️ iOS: Detectado UUID temporal - se actualizará al encontrar dispositivo");
+    print("🔍 iOS: Buscará dispositivo con nombre 'Holy-IOT'");
+  } else {
+    print("✅ iOS: UUID válido encontrado: ${BleData.macAddress}");
   }
   
-  print("✅ MAC Address válido: ${BleData.macAddress}");
-  
-  // Verificar estado Bluetooth antes de escanear
+  // ✅ VERIFICAR estado Bluetooth antes de escanear
   BluetoothAdapterState bleState = await FlutterBluePlus.adapterState.first;
   if (bleState != BluetoothAdapterState.on) {
-    print("❌ Bluetooth no está encendido: $bleState");
+    print("❌ iOS: Bluetooth no está encendido: $bleState");
     return;
   }
   
-  print("✅ Bluetooth está encendido, iniciando escaneo...");
+  print("✅ iOS: Bluetooth está encendido, iniciando escaneo por nombre...");
   
   try {
     bool success = await startScanAndConnect();
     if (success) {
-      print("✅ BLE iOS configurado exitosamente");
+      print("✅ iOS: BLE configurado exitosamente");
     } else {
-      print("⚠️ No se pudo conectar BLE inmediatamente");
-      print("   iOS seguirá intentando automáticamente con autoConnect");
+      print("⚠️ iOS: No se pudo conectar inmediatamente");
+      print("🔄 iOS: Seguirá intentando automáticamente cada 30 segundos");
     }
   } catch (e) {
-    print("❌ Error configurando BLE iOS: $e");
+    print("❌ iOS: Error configurando BLE: $e");
   }
   
   print("🍎 === FIN CONFIGURACIÓN BLE iOS ===");
@@ -1317,7 +1318,7 @@ Future<bool> startScanAndConnect() async {
   _lastScanStatus = "Iniciando escaneo #$_scanAttempts";
   _scanDetails = "Buscando por nombre...";
   
-  if (mounted) setState(() {}); // Actualizar UI inmediatamente
+  if (mounted) setState(() {});
 
   BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
   if (adapterState != BluetoothAdapterState.on) {
@@ -1332,11 +1333,22 @@ Future<bool> startScanAndConnect() async {
     }
   }
 
-  // ✅ CAMBIO CRÍTICO: Buscar por nombre en lugar de MAC
+  // ✅ ESTRATEGIA ESPECÍFICA POR PLATAFORMA
   String targetDeviceName = "Holy-IOT";
-  print("🔍 Escaneo #$_scanAttempts buscando dispositivo: '$targetDeviceName'");
-  _lastScanStatus = "Buscando '$targetDeviceName'...";
-  _scanDetails = "Nombre objetivo: $targetDeviceName";
+  
+  if (Platform.isIOS) {
+    print("🍎 === ESCANEO iOS POR NOMBRE ===");
+    print("🔍 iOS busca SOLO por nombre: '$targetDeviceName'");
+    print("📝 iOS ignora MAC Address del servidor: ${BleData.macAddress}");
+    _lastScanStatus = "iOS: Buscando '$targetDeviceName' (ignora MAC)";
+    _scanDetails = "iOS usa UUID dinámico, busca por nombre";
+  } else {
+    print("🤖 === ESCANEO ANDROID POR MAC ===");
+    print("🔍 Android busca por MAC: ${BleData.macAddress}");
+    _lastScanStatus = "Android: Buscando MAC ${BleData.macAddress}";
+    _scanDetails = "Android usa MAC real del servidor";
+  }
+  
   isScanning = true;
   if (mounted) setState(() {});
 
@@ -1344,22 +1356,17 @@ Future<bool> startScanAndConnect() async {
     scanResults.clear();
     
     Duration scanTimeout = Platform.isIOS 
-        ? const Duration(seconds: 25)  // Tiempo suficiente para iOS
-        : const Duration(seconds: 8);  // Android rápido como antes
+        ? const Duration(seconds: 25)  // iOS necesita más tiempo
+        : const Duration(seconds: 8);   // Android rápido
     
-    print("${Platform.isIOS ? '🍎' : '🤖'} ${Platform.isIOS ? 'iOS' : 'Android'}: Escaneando por nombre '$targetDeviceName'");
-    _scanDetails = "${Platform.isIOS ? 'iOS' : 'Android'}: Escaneando '$targetDeviceName'...";
-    if (mounted) setState(() {});
-    
+    print("${Platform.isIOS ? '🍎' : '🤖'} Iniciando escaneo...");
     await FlutterBluePlus.startScan(timeout: scanTimeout);
 
     Completer<bool> connectionCompleter = Completer<bool>();
     StreamSubscription? subscription;
     bool deviceFound = false;
-    List<ScanResult> holyIotCandidates = [];
 
     subscription = FlutterBluePlus.scanResults.listen((results) {
-      // ✅ ACTUALIZAR contadores de debug
       _devicesFound = results.length;
       _foundDeviceNames.clear();
       _foundDeviceMacs.clear();
@@ -1374,40 +1381,46 @@ Future<bool> startScanAndConnect() async {
       }
       
       print("📱 Escaneo #$_scanAttempts: $_devicesFound dispositivos encontrados");
-      for (var result in results) {
-        String deviceName = result.device.platformName.isNotEmpty 
-            ? result.device.platformName 
-            : "Unknown";
-        print("   - ${result.device.remoteId} | '$deviceName' | RSSI: ${result.rssi}");
+      
+      // ✅ ESTRATEGIA DIFERENCIADA POR PLATAFORMA
+      List<ScanResult> validResults = [];
+      
+      if (Platform.isIOS) {
+        // ✅ iOS: SOLO buscar por nombre
+        validResults = results
+            .where((result) => result.device.platformName.toLowerCase() == targetDeviceName.toLowerCase())
+            .toList();
+        
+        print("🍎 iOS: Dispositivos '$targetDeviceName' encontrados: ${validResults.length}");
+        
+        if (validResults.isNotEmpty) {
+          for (var result in validResults) {
+            print("🍎 iOS: - ${result.device.remoteId} | '$targetDeviceName' | RSSI: ${result.rssi}");
+          }
+        }
+        
+      } else {
+        // ✅ Android: Buscar por MAC Address (estrategia original)
+        validResults = results
+            .where((result) => result.device.remoteId.toString() == BleData.macAddress)
+            .toList();
+        
+        print("🤖 Android: Dispositivos con MAC ${BleData.macAddress}: ${validResults.length}");
       }
       
-      // ✅ BUSCAR POR NOMBRE (igual para iOS y Android)
-      List<ScanResult> filteredResults = results
-          .where((result) => result.device.platformName.toLowerCase() == targetDeviceName.toLowerCase())
-          .toList();
+      _holyIotFound = validResults.length;
+      _lastScanStatus = "Dispositivos válidos encontrados: $_holyIotFound de $_devicesFound";
       
-      _holyIotFound = filteredResults.length;
-      _lastScanStatus = "'$targetDeviceName' encontrados: $_holyIotFound de $_devicesFound";
-      
-      print("🎯 Dispositivos '$targetDeviceName' encontrados: $_holyIotFound");
-      
-      if (filteredResults.isNotEmpty) {
-        // ✅ Si hay múltiples, elegir el de mejor RSSI (más cercano)
-        if (filteredResults.length > 1) {
-          print("⚠️ Múltiples '$targetDeviceName' encontrados, eligiendo el más cercano:");
-          for (var result in filteredResults) {
+      if (validResults.isNotEmpty) {
+        // ✅ Si hay múltiples, elegir el de mejor RSSI
+        if (validResults.length > 1) {
+          print("⚠️ Múltiples dispositivos encontrados, eligiendo el más cercano:");
+          for (var result in validResults) {
             print("   - ${result.device.remoteId} | RSSI: ${result.rssi}");
           }
           
-          // Ordenar por RSSI (mayor = más cercano = mejor señal)
-          filteredResults.sort((a, b) => b.rssi.compareTo(a.rssi));
-          print("✅ Elegido el más cercano: ${filteredResults.first.device.remoteId} (RSSI: ${filteredResults.first.rssi})");
-          _lastScanStatus = "Múltiples encontrados, eligiendo mejor RSSI";
-          _scanDetails = "RSSI: ${filteredResults.first.rssi} (mejor de ${filteredResults.length})";
-        } else {
-          print("✅ Un solo '$targetDeviceName' encontrado: ${filteredResults.first.device.remoteId} (RSSI: ${filteredResults.first.rssi})");
-          _lastScanStatus = "¡'$targetDeviceName' encontrado!";
-          _scanDetails = "RSSI: ${filteredResults.first.rssi}";
+          validResults.sort((a, b) => b.rssi.compareTo(a.rssi));
+          print("✅ Elegido el más cercano: ${validResults.first.device.remoteId} (RSSI: ${validResults.first.rssi})");
         }
         
         deviceFound = true;
@@ -1415,7 +1428,7 @@ Future<bool> startScanAndConnect() async {
         
         if (_isMounted) {
           setState(() {
-            scanResults = [filteredResults.first]; // Solo el mejor
+            scanResults = [validResults.first];
           });
         }
         
@@ -1423,13 +1436,21 @@ Future<bool> startScanAndConnect() async {
         isScanning = false;
         retryScanTimer?.cancel();
 
-        // ✅ GUARDAR EL IDENTIFICADOR CORRECTO SEGÚN LA PLATAFORMA
-        String deviceIdentifier = filteredResults.first.device.remoteId.toString();
-        print("💾 Guardando identificador para ${Platform.isIOS ? 'iOS' : 'Android'}: $deviceIdentifier");
-        BleData.setMacAddress(deviceIdentifier); // Guardar UUID en iOS, MAC en Android
+        // ✅ CRÍTICO: GUARDAR EL IDENTIFICADOR CORRECTO SEGÚN LA PLATAFORMA
+        String deviceIdentifier = validResults.first.device.remoteId.toString();
+        
+        if (Platform.isIOS) {
+          print("🍎 iOS: Guardando UUID dinámico: $deviceIdentifier");
+          print("🍎 iOS: Reemplazando MAC del servidor (${BleData.macAddress}) con UUID");
+          await BleData.setMacAddress(deviceIdentifier); // ✅ Guardar UUID dinámico
+          _scanDetails = "iOS: MAC actualizado a UUID dinámico";
+        } else {
+          print("🤖 Android: Confirmando MAC Address: $deviceIdentifier");
+          _scanDetails = "Android: MAC confirmado del servidor";
+        }
 
         connectToDevice(
-          filteredResults.first.device,
+          validResults.first.device,
           navigatorKey.currentContext!,
           discoverServices,
           triggerUpdateTimer,
@@ -1439,59 +1460,52 @@ Future<bool> startScanAndConnect() async {
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.complete(true);
           BleData.reconnectionAttemptCount = 0;
-          print("✅ Dispositivo '$targetDeviceName' encontrado y conexión iniciada");
+          print("✅ Dispositivo encontrado y conexión iniciada");
         }
 
         subscription?.cancel();
       } else {
         // No se encontró el dispositivo objetivo
-        if (_devicesFound > 0) {
-          _lastScanStatus = "Sin '$targetDeviceName' en $_devicesFound dispositivos";
-          _scanDetails = "Encontrados otros dispositivos, no '$targetDeviceName'";
+        if (Platform.isIOS) {
+          _lastScanStatus = "iOS: Sin '$targetDeviceName' en $_devicesFound dispositivos";
+          _scanDetails = "iOS necesita dispositivo con nombre exacto";
         } else {
-          _lastScanStatus = "Sin dispositivos encontrados";
-          _scanDetails = "Ningún dispositivo BLE detectado";
+          _lastScanStatus = "Android: Sin MAC ${BleData.macAddress} en $_devicesFound";
+          _scanDetails = "Android necesita MAC específico del servidor";
         }
       }
       
-      // ✅ ACTUALIZAR UI con información de debug
       if (mounted) setState(() {});
     });
 
+    // ✅ TIMEOUT con logging específico por plataforma
     Duration timeoutDuration = Platform.isIOS 
         ? const Duration(seconds: 30)
         : const Duration(seconds: 12);
     
     Future.delayed(timeoutDuration, () {
       if (!connectionCompleter.isCompleted) {
-        print("⏱️ Timeout escaneo #$_scanAttempts buscando '$targetDeviceName'");
-        
-        if (_targetDeviceFound) {
-          _lastScanStatus = "'$targetDeviceName' encontrado, verificando conexión...";
-          _scanDetails = "Esperando confirmación de conexión";
-        } else {
-          _lastScanStatus = "TIMEOUT - '$targetDeviceName' no encontrado";
+        if (Platform.isIOS) {
+          print("⏱️ iOS: Timeout escaneo #$_scanAttempts buscando '$targetDeviceName'");
+          _lastScanStatus = "iOS TIMEOUT - '$targetDeviceName' no encontrado";
           if (_devicesFound > 0) {
-            _scanDetails = "$_devicesFound dispositivos, 0 '$targetDeviceName'";
+            _scanDetails = "$_devicesFound dispositivos, ninguno llamado '$targetDeviceName'";
+            print("🔍 iOS: Dispositivos encontrados pero sin nombre correcto:");
+            for (int i = 0; i < _foundDeviceNames.length && i < 5; i++) {
+              print("   - ${_foundDeviceNames[i]}");
+            }
           } else {
-            _scanDetails = "Sin dispositivos BLE detectados";
+            _scanDetails = "iOS: Sin dispositivos BLE detectados";
           }
+        } else {
+          print("⏱️ Android: Timeout escaneo #$_scanAttempts buscando MAC ${BleData.macAddress}");
+          _lastScanStatus = "Android TIMEOUT - MAC no encontrado";
         }
         
         FlutterBluePlus.stopScan();
         isScanning = false;
         
         if (!BleData.isConnected) {
-          print("❌ '$targetDeviceName' no encontrado en escaneo #$_scanAttempts");
-          
-          if (_devicesFound > 0 && _holyIotFound == 0) {
-            print("🔍 Se encontraron $_devicesFound dispositivos pero ninguno se llama '$targetDeviceName':");
-            for (int i = 0; i < _foundDeviceNames.length && i < 5; i++) {
-              print("   - ${_foundDeviceNames[i]}");
-            }
-            _scanDetails = "Dispositivos encontrados sin nombre '$targetDeviceName'";
-          }
-          
           Duration retryDelay = Platform.isIOS 
               ? const Duration(seconds: 30) 
               : const Duration(seconds: 15);
@@ -1499,7 +1513,7 @@ Future<bool> startScanAndConnect() async {
           retryScanTimer?.cancel();
           retryScanTimer = Timer(retryDelay, () {
             if (!BleData.isConnected) {
-              print("🔄 Programando escaneo #${_scanAttempts + 1} para '$targetDeviceName'...");
+              print("🔄 Programando escaneo #${_scanAttempts + 1}...");
               startScanAndConnect();
             }
           });
@@ -1507,14 +1521,13 @@ Future<bool> startScanAndConnect() async {
           connectionCompleter.complete(false);
         }
         
-        // ✅ ACTUALIZAR UI después del timeout
         if (mounted) setState(() {});
       }
     });
 
     return connectionCompleter.future;
   } catch (e) {
-    print("❌ Error durante escaneo #$_scanAttempts buscando '$targetDeviceName': $e");
+    print("❌ Error durante escaneo #$_scanAttempts: $e");
     _lastScanStatus = "ERROR: $e";
     _scanDetails = "Excepción durante escaneo";
     isScanning = false;
@@ -1564,12 +1577,12 @@ Future<bool> startScanAndConnect() async {
   Future<void> handleReconnection() async {
     // Solo para Android
     if (Platform.isIOS) {
-      print("🍎 iOS maneja reconexión automáticamente");
+      print("🍎 iOS: Reconexión automática por Apple - No acción manual");
       return;
     }
     
     if (isReconnecting || BleData.isConnected) {
-      print("⚠️ No se inicia reconexión: isReconnecting=${isReconnecting}, BleData.isConnected=${BleData.isConnected}");
+      print("⚠️ Android: No iniciar reconexión: isReconnecting=$isReconnecting, conectado=${BleData.isConnected}");
       return;
     }
     
@@ -1976,10 +1989,19 @@ Future<bool> startScanAndConnect() async {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
-                            Text("iOS | BT: $_bluetoothState | Escaneos: $_scanAttempts", style: TextStyle(fontSize: 8)),
-                            Text("IMEI: ${BleData.imei.length > 8 ? BleData.imei.substring(0, 8) + '...' : BleData.imei}", style: TextStyle(fontSize: 8)),
-                          ],
+                                Text("📱 SISTEMA:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                                Text("${Platform.isIOS ? 'iOS' : 'Android'} | BT: $_bluetoothState", style: TextStyle(fontSize: 8)),
+                                
+                                // ✅ NUEVO: Mostrar estado de MAC/UUID
+                                if (Platform.isIOS) ...[
+                                  Text("UUID: ${BleData.macAddress.length > 15 ? BleData.macAddress.substring(0, 15) + '...' : BleData.macAddress}", style: TextStyle(fontSize: 8)),
+                                  Text("¿Temporal?: ${BleData.needsUuidUpdate() ? '⚠️ SÍ' : '✅ NO'}", style: TextStyle(fontSize: 8)),
+                                ] else ...[
+                                  Text("MAC: ${BleData.macAddress.length > 12 ? BleData.macAddress.substring(0, 12) + '...' : BleData.macAddress}", style: TextStyle(fontSize: 8)),
+                                ],
+                                
+                                Text("IMEI: ${BleData.imei.length > 8 ? BleData.imei.substring(0, 8) + '...' : BleData.imei}", style: TextStyle(fontSize: 8)),
+                              ],
                         ),
                       ),
                       
@@ -2169,94 +2191,104 @@ Future<bool> startScanAndConnect() async {
     );
   }
 
-  Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10.0),
-      decoration: BoxDecoration(
-        color: BleData.isConnected ? const Color(0xFFE8F5E9) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: BleData.isConnected ? Colors.green.shade300 : Colors.grey.shade300, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(
-                BleData.isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-                color: BleData.isConnected ? Colors.green : Colors.red,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: BleData.isConnected ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  BleData.isConnected ? 'Conectado' : 'Desconectado',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 6),
-          
-          Text(
-            device != null && device.platformName.isNotEmpty
-                ? device.platformName
-                : 'Dispositivo BLE',
-            style: const TextStyle(
-              fontSize: 18.0,
-              fontWeight: FontWeight.bold,
+Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(10.0),
+    decoration: BoxDecoration(
+      color: BleData.isConnected ? const Color(0xFFE8F5E9) : Colors.grey[100],
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: BleData.isConnected ? Colors.green.shade300 : Colors.grey.shade300, width: 1.5),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(
+              BleData.isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+              color: BleData.isConnected ? Colors.green : Colors.red,
+              size: 24,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: BleData.isConnected ? Colors.green : Colors.red,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                BleData.isConnected ? 'Conectado' : 'Desconectado',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.0,
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 6),
+        
+        Text(
+          device != null && device.platformName.isNotEmpty
+              ? device.platformName
+              : 'Holy-IOT',
+          style: const TextStyle(
+            fontSize: 18.0,
+            fontWeight: FontWeight.bold,
           ),
-          
-          const SizedBox(height: 4),
-          
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        
+        const SizedBox(height: 4),
+        
+        // ✅ MOSTRAR INFORMACIÓN ESPECÍFICA POR PLATAFORMA
+        if (Platform.isIOS) ...[
+          Text(
+            "UUID iOS: ${macAddress.length > 20 ? macAddress.substring(0, 20) + '...' : macAddress}",
+            style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500),
+          ),
+          if (BleData.needsUuidUpdate())
+            Text(
+              "⚠️ UUID temporal - se actualizará al conectar",
+              style: TextStyle(fontSize: 12.0, color: Colors.orange[700], fontStyle: FontStyle.italic),
+            ),
+        ] else ...[
           Text(
             "MAC: $macAddress",
-            style: const TextStyle(
-              fontSize: 16.0,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          
-          const SizedBox(height: 4),
-          
-          Text(
-            "Batería: ${BleData.batteryLevel > 0 ? "${BleData.batteryLevel}%" : "N/A"}",
-            style: TextStyle(
-              fontSize: 16.0,
-              fontWeight: FontWeight.w600,
-              color: BleData.batteryLevel > 20 ? Colors.green[700] : Colors.orange[700],
-            ),
-          ),
-          
-          const SizedBox(height: 4),
-          
-          Text(
-            "RSSI: ${BleData.rssi} dBm",
-            style: TextStyle(
-              fontSize: 16.0,
-              fontWeight: FontWeight.w600,
-              color: BleData.rssi > -80 ? Colors.blue[700] : Colors.grey[600],
-            ),
+            style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
           ),
         ],
-      ),
-    );
-  }
+        
+        const SizedBox(height: 4),
+        
+        Text(
+          "Batería: ${BleData.batteryLevel > 0 ? "${BleData.batteryLevel}%" : "N/A"}",
+          style: TextStyle(
+            fontSize: 16.0,
+            fontWeight: FontWeight.w600,
+            color: BleData.batteryLevel > 20 ? Colors.green[700] : Colors.orange[700],
+          ),
+        ),
+        
+        const SizedBox(height: 4),
+        
+        Text(
+          "RSSI: ${BleData.rssi} dBm",
+          style: TextStyle(
+            fontSize: 16.0,
+            fontWeight: FontWeight.w600,
+            color: BleData.rssi > -80 ? Colors.blue[700] : Colors.grey[600],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildDeviceInfoTileLandscape(BluetoothDevice? device, String macAddress) {
     return Container(

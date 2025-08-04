@@ -89,13 +89,16 @@ class CommunicationService {
   }
 }
 
-  // Nueva función para obtener el MacAddress desde el IMEI y guardarlo
-  // Modificar esta función en coms.dart
 Future<void> fetchMacAddress(String imei) async {
   const String url = "https://mmofusion.com/get_address.php";
 
   try {
-    print("🔍 iOS: Solicitando MAC Address para IMEI: $imei");
+    if (Platform.isIOS) {
+      print("🍎 iOS: Solicitando datos para IMEI: $imei");
+      print("🍎 iOS: NOTA - MAC Address se actualizará cuando se encuentre el dispositivo por nombre");
+    } else {
+      print("🤖 Android: Solicitando MAC Address para IMEI: $imei");
+    }
     
     final response = await http.post(
       Uri.parse(url),
@@ -105,39 +108,46 @@ Future<void> fetchMacAddress(String imei) async {
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
       
-      // ✅ DEBUGGING para iOS
-      print("📡 iOS: Respuesta del servidor: $data");
+      print("📡 Respuesta del servidor: $data");
       
-      // Obtener y guardar MacAddress
+      // ✅ MANEJAR MAC ADDRESS SEGÚN PLATAFORMA
       if (data.containsKey('mac_address') && data['mac_address'] != null) {
         String mac = data['mac_address'].toString();
         if (mac.isNotEmpty && mac != "null") {
-          await BleData.setMacAddress(mac);
-          print("✅ iOS: MacAddress recibido y guardado: $mac");
+          if (Platform.isIOS) {
+            // ✅ iOS: Guardar temporalmente, se actualizará al encontrar dispositivo
+            await BleData.setMacAddress("TEMP_$mac"); // Prefijo temporal
+            print("🍎 iOS: MAC temporal guardado: TEMP_$mac");
+            print("🍎 iOS: Se actualizará con UUID real al conectar");
+          } else {
+            // ✅ Android: Guardar MAC real
+            await BleData.setMacAddress(mac);
+            print("🤖 Android: MAC Address recibido y guardado: $mac");
+          }
         } else {
-          print("⚠️ iOS: MacAddress vacío o null en respuesta del servidor");
+          print("⚠️ MAC Address vacío en respuesta del servidor");
         }
       } else {
-        print("⚠️ iOS: IMEI no encontrado en la base de datos o no tiene MacAddress asociado");
+        print("⚠️ IMEI no encontrado en la base de datos o no tiene MAC Address asociado");
       }
       
-      // Obtener y guardar número SOS
+      // ✅ OBTENER Y GUARDAR NÚMERO SOS (igual para ambas plataformas)
       if (data.containsKey('sos_number') && data['sos_number'] != null) {
         String sosNumber = data['sos_number'].toString();
         if (sosNumber.isNotEmpty && sosNumber != "null") {
           await BleData.setSosNumber(sosNumber);
-          print("✅ iOS: Número SOS recibido y guardado: $sosNumber");
+          print("✅ Número SOS recibido y guardado: $sosNumber");
         } else {
-          print("⚠️ iOS: Número SOS vacío en respuesta del servidor");
+          print("⚠️ Número SOS vacío en respuesta del servidor");
         }
       } else {
-        print("⚠️ iOS: No se encontró número SOS asociado al IMEI");
+        print("⚠️ No se encontró número SOS asociado al IMEI");
       }
     } else {
-      print("❌ iOS: Error en el servidor: ${response.statusCode}");
+      print("❌ Error en el servidor: ${response.statusCode}");
     }
   } catch (e) {
-    print("⚠️ iOS: Error en la solicitud POST: $e");
+    print("⚠️ Error en la solicitud POST: $e");
   }
 }
 

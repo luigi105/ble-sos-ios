@@ -764,4 +764,39 @@ Future<void> showBleDisconnectedNotification() async {
   }
 }
 
+
+
+// ✅ NUEVA FUNCIÓN: Verificar si necesitamos actualizar MAC/UUID
+static bool needsUuidUpdate() {
+  if (Platform.isIOS) {
+    // En iOS, si el macAddress empieza con "TEMP_", necesita actualización
+    bool isTemp = macAddress.startsWith("TEMP_");
+    print("🍎 iOS: ¿Necesita actualización UUID? $isTemp (MAC actual: $macAddress)");
+    return isTemp;
+  } else {
+    // En Android, usar MAC del servidor siempre
+    return false;
+  }
+}
+
+// ✅ NUEVA FUNCIÓN: Limpiar UUID temporal
+static String getCleanMacForAndroid() {
+  if (macAddress.startsWith("TEMP_")) {
+    return macAddress.substring(5); // Remover prefijo "TEMP_"
+  }
+  return macAddress;
+}
+
+// ✅ NUEVA FUNCIÓN: Debug de estado de conexión
+static void debugConnectionState() {
+  print("🔍 === DEBUG ESTADO CONEXIÓN ===");
+  print("   Plataforma: ${Platform.isIOS ? 'iOS' : 'Android'}");
+  print("   MAC/UUID almacenado: $macAddress");
+  print("   ¿Es temporal?: ${needsUuidUpdate()}");
+  print("   Estado conectado: $isConnected");
+  print("   conBoton: $conBoton");
+  print("🔍 === FIN DEBUG ===");
+}
+
+
 }
