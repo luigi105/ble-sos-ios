@@ -436,6 +436,102 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   }
 
   
+Future<void> _runDiagnostic() async {
+  try {
+    print("🔧 === INICIANDO DIAGNÓSTICO COMPLETO ===");
+    
+    // Mostrar progreso en UI
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔧 Ejecutando diagnóstico..."),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    // 1. Diagnóstico del sistema
+    await debugBluetoothSystem();
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    // 2. Verificar inicialización
+    if (Platform.isIOS) {
+      try {
+        await IOSPlatformManager.initialize();
+        print("✅ IOSPlatformManager re-inicializado");
+      } catch (e) {
+        print("❌ Error re-inicializando IOSPlatformManager: $e");
+      }
+    }
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    // 3. Escaneo básico
+    bool holyIotFound = await basicScanForHolyIot();
+    
+    if (holyIotFound) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ Holy-IOT encontrado! Intentando conectar..."),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      
+      // 4. Intentar conexión
+      await Future.delayed(Duration(seconds: 1));
+      bool connected = await startScanAndConnect();
+      
+      if (connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("🎉 ¡CONEXIÓN EXITOSA!"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("⚠️ Holy-IOT encontrado pero falla la conexión"),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Holy-IOT no encontrado. Verifica que esté encendido y cerca."),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+    
+    // 5. Actualizar UI
+    if (mounted) {
+      setState(() {
+        // Forzar actualización del debug
+      });
+    }
+    
+    print("🔧 === DIAGNÓSTICO COMPLETADO ===");
+    
+  } catch (e) {
+    print("❌ Error en diagnóstico: $e");
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("❌ Error en diagnóstico: $e"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 5),
+      ),
+    );
+  }
+}
+
 
 // ✅ FUNCIÓN COMPLETA _initializeiOS() CORREGIDA para main.dart:
 
@@ -2046,6 +2142,26 @@ Future<bool> startScanAndConnect() async {
                             ),
                           ),
                 ),
+
+                if (Platform.isIOS && !BleData.isConnected) 
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _runDiagnostic();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          "🔧 DIAGNÓSTICO BLE",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
                 
                 if (!BleData.isConnected)
                   Container(

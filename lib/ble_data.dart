@@ -798,5 +798,18 @@ static void debugConnectionState() {
   print("🔍 === FIN DEBUG ===");
 }
 
+static void verifyConfiguration() {
+  print("🔍 === VERIFICACIÓN CONFIGURACIÓN ===");
+  print("   conBoton: $conBoton (${conBoton == 1 ? 'BLE Habilitado' : 'Solo GPS'})");
+  print("   IMEI: $imei (${imei != 'UNKNOWN_IMEI' ? 'Válido' : 'No configurado'})");
+  print("   MAC/UUID: $macAddress (${macAddress != 'N/A' ? 'Configurado' : 'No configurado'})");
+  print("   SOS Number: $sosNumber (${sosNumber != 'UNKNOWN_SOS' ? 'Configurado' : 'No configurado'})");
+  print("   isConnected: $isConnected");
+  print("   bleNotificationsEnabled: $bleNotificationsEnabled");
+  print("   connectionNotificationsEnabled: $connectionNotificationsEnabled");
+  print("🔍 === FIN VERIFICACIÓN ===");
+}
+
+
 
 }
