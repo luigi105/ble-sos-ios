@@ -645,12 +645,13 @@ Future<bool> startScanAndConnectSimple() async {
     
     holyIotDevice = await deviceCompleter.future;
     
+    // ✅ VERIFICACIÓN NULL CORREGIDA
     if (holyIotDevice == null) {
       print("❌ Holy-IOT no encontrado");
       return false;
     }
     
-    // Conectar
+    // Conectar - AHORA holyIotDevice NO PUEDE SER NULL
     print("🔗 Intentando conectar con ${holyIotDevice.remoteId}...");
     
     try {
@@ -664,7 +665,7 @@ Future<bool> startScanAndConnectSimple() async {
       if (state == BluetoothConnectionState.connected) {
         print("✅ Conexión exitosa!");
         
-        // Actualizar datos
+        // Actualizar datos - holyIotDevice ya no puede ser null aquí
         String deviceUuid = holyIotDevice.remoteId.toString();
         BleData.setMacAddress(deviceUuid);
         BleData.update(
