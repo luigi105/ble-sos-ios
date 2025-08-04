@@ -1442,7 +1442,7 @@ Future<bool> startScanAndConnect() async {
         if (Platform.isIOS) {
           print("🍎 iOS: Guardando UUID dinámico: $deviceIdentifier");
           print("🍎 iOS: Reemplazando MAC del servidor (${BleData.macAddress}) con UUID");
-          await BleData.setMacAddress(deviceIdentifier); // ✅ Guardar UUID dinámico
+          BleData.setMacAddress(deviceIdentifier); // ✅ Guardar UUID dinámico
           _scanDetails = "iOS: MAC actualizado a UUID dinámico";
         } else {
           print("🤖 Android: Confirmando MAC Address: $deviceIdentifier");

@@ -116,7 +116,7 @@ Future<void> fetchMacAddress(String imei) async {
         if (mac.isNotEmpty && mac != "null") {
           if (Platform.isIOS) {
             // ✅ iOS: Guardar temporalmente, se actualizará al encontrar dispositivo
-            await BleData.setMacAddress("TEMP_$mac"); // Prefijo temporal
+            BleData.setMacAddress("TEMP_$mac"); // Prefijo temporal
             print("🍎 iOS: MAC temporal guardado: TEMP_$mac");
             print("🍎 iOS: Se actualizará con UUID real al conectar");
           } else {
