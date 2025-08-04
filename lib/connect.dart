@@ -742,7 +742,7 @@ Future<void> debugBluetoothSystem() async {
     // 4. Verificar conexión actual
     print("🔗 Estado conexión:");
     print("   - isConnected: ${BleData.isConnected}");
-    print("   - isScanning: $isScanning");
+    // ✅ REMOVIDO: isScanning (no disponible aquí)
     
     // 5. Verificar dispositivos conectados
     List<BluetoothDevice> connectedDevices = await FlutterBluePlus.connectedDevices;
@@ -751,9 +751,15 @@ Future<void> debugBluetoothSystem() async {
       print("   - ${device.remoteId} | '${device.platformName}'");
     }
     
-    // 6. Verificar si IOSPlatformManager está inicializado
+    // 6. Verificar si IOSPlatformManager está inicializado (solo iOS)
     if (Platform.isIOS) {
-      print("🍎 IOSPlatformManager inicializado: ${IOSPlatformManager.isIOS}");
+      print("🍎 Verificando IOSPlatformManager...");
+      try {
+        bool isActive = IOSPlatformManager.isLocationActive;
+        print("🍎 IOSPlatformManager ubicación activa: $isActive");
+      } catch (e) {
+        print("❌ Error verificando IOSPlatformManager: $e");
+      }
     }
     
   } catch (e) {
@@ -776,12 +782,24 @@ Future<bool> basicScanForHolyIot() async {
     
     print("✅ Bluetooth encendido, iniciando escaneo...");
     
+    // Detener cualquier escaneo previo
+    try {
+      await FlutterBluePlus.stopScan();
+    } catch (e) {
+      // Ignorar error si no había escaneo
+    }
+    
     // Escaneo corto para diagnóstico
-    await FlutterBluePlus.startScan(timeout: Duration(seconds: 10));
+    await FlutterBluePlus.startScan(timeout: Duration(seconds: 15));
     
     bool holyIotFound = false;
+    String foundUuid = "";
     
-    await for (List<ScanResult> results in FlutterBluePlus.scanResults) {
+    // Escuchar resultados de escaneo
+    StreamSubscription? subscription;
+    Completer<bool> completer = Completer<bool>();
+    
+    subscription = FlutterBluePlus.scanResults.listen((results) {
       print("📡 Escaneo: ${results.length} dispositivos encontrados");
       
       for (var result in results) {
@@ -795,26 +813,40 @@ Future<bool> basicScanForHolyIot() async {
           print("   UUID/MAC: ${result.device.remoteId}");
           print("   RSSI: ${result.rssi}");
           holyIotFound = true;
+          foundUuid = result.device.remoteId.toString();
           
           // Guardar el identificador correcto
-          String deviceId = result.device.remoteId.toString();
-          BleData.setMacAddress(deviceId);
-          print("💾 Identificador guardado: $deviceId");
+          BleData.setMacAddress(foundUuid);
+          print("💾 UUID guardado: $foundUuid");
           
-          break;
+          // Completar búsqueda
+          FlutterBluePlus.stopScan();
+          subscription?.cancel();
+          
+          if (!completer.isCompleted) {
+            completer.complete(true);
+          }
+          return;
         }
       }
-      
-      if (holyIotFound) break;
-    }
+    });
     
-    await FlutterBluePlus.stopScan();
+    // Timeout de 20 segundos
+    Timer(Duration(seconds: 20), () {
+      if (!completer.isCompleted) {
+        FlutterBluePlus.stopScan();
+        subscription?.cancel();
+        completer.complete(false);
+      }
+    });
     
-    if (holyIotFound) {
-      print("✅ Holy-IOT encontrado y datos actualizados");
+    bool result = await completer.future;
+    
+    if (result) {
+      print("✅ Holy-IOT encontrado y UUID actualizado: $foundUuid");
       return true;
     } else {
-      print("❌ Holy-IOT no encontrado");
+      print("❌ Holy-IOT no encontrado en 20 segundos de escaneo");
       return false;
     }
     
