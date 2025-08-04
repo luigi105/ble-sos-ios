@@ -438,126 +438,105 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   
 Future<void> _runDiagnostic() async {
   try {
-    print("🔧 === INICIANDO DIAGNÓSTICO COMPLETO ===");
+    print("🔧 === USANDO FUNCIÓN ORIGINAL ===");
     
-    // Mostrar progreso en UI
+    // Mostrar que vamos a usar la función original
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("🔧 Ejecutando diagnóstico..."),
+        content: Text("🔧 Usando función original startScanAndConnect()..."),
         backgroundColor: Colors.blue,
-        duration: Duration(seconds: 2),
-      ),
-    );
-    
-    // 1. Verificar configuración guardada
-    BleData.verifyConfiguration();
-    
-    await Future.delayed(Duration(seconds: 1));
-    
-    // 2. Diagnóstico del sistema
-    await debugBluetoothSystem();
-    
-    await Future.delayed(Duration(seconds: 1));
-    
-    // 3. Verificar inicialización iOS
-    if (Platform.isIOS) {
-      try {
-        await IOSPlatformManager.initialize();
-        print("✅ IOSPlatformManager re-inicializado");
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("✅ IOSPlatformManager inicializado"),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } catch (e) {
-        print("❌ Error re-inicializando IOSPlatformManager: $e");
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Error IOSPlatformManager: $e"),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-    
-    await Future.delayed(Duration(seconds: 1));
-    
-    // 4. ✅ CAMBIO: Usar directamente startScanAndConnectSimple()
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("🔍 Buscando Holy-IOT y conectando..."),
-        backgroundColor: Colors.orange,
         duration: Duration(seconds: 3),
       ),
     );
     
-    // ✅ REEMPLAZADO: basicScanForHolyIot() por startScanAndConnectSimple()
-    bool connected = await startScanAndConnectSimple();
+    await Future.delayed(Duration(seconds: 1));
     
-    if (connected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("🎉 ¡CONEXIÓN EXITOSA!"),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 4),
+    // 1. Verificar configuración básica
+    if (BleData.conBoton != 1) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("❌ BLE DESHABILITADO"),
+          content: Text("conBoton = ${BleData.conBoton}\n\nBLE no está habilitado. Ve a configuración y habilita BLE."),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))],
+        ),
+      );
+      return;
+    }
+    
+    // 2. Verificar Bluetooth
+    BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("❌ BLUETOOTH APAGADO"),
+          content: Text("Estado: $adapterState\n\nActiva Bluetooth y prueba de nuevo."),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))],
+        ),
+      );
+      return;
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("✅ Configuración OK - Usando función original..."),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    await Future.delayed(Duration(seconds: 2));
+    
+    // 3. ✅ USAR LA FUNCIÓN ORIGINAL QUE YA FUNCIONABA
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔍 Ejecutando startScanAndConnect() original..."),
+        backgroundColor: Colors.purple,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    
+    // ✅ LLAMAR A LA FUNCIÓN ORIGINAL
+    bool success = await startScanAndConnect();
+    
+    await Future.delayed(Duration(seconds: 2));
+    
+    // 4. Mostrar resultado
+    if (success) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("🎉 ¡ÉXITO!"),
+          content: Text("La función original funcionó correctamente.\n\nDispositivo conectado: ${BleData.isConnected}\nUUID: ${BleData.macAddress}"),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("¡Genial!"))],
         ),
       );
       
       // Actualizar UI
       if (mounted) {
-        setState(() {
-          // La UI se actualizará automáticamente porque BleData.isConnected cambió
-        });
+        setState(() {});
       }
       
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("❌ No se pudo encontrar o conectar con Holy-IOT. Revisa los logs."),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
+      // Si la función original también falla, el problema es más profundo
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("⚠️ FUNCIÓN ORIGINAL TAMBIÉN FALLA"),
+          content: Text("Incluso la función original startScanAndConnect() que funcionaba antes ahora falla.\n\n¿Hiciste algún cambio en:\n- Info.plist\n- Permisos iOS\n- Configuración del proyecto?\n\nDispositivo conectado: ${BleData.isConnected}"),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("Revisar"))],
         ),
       );
     }
     
-    // 5. Mostrar estado final
-    await Future.delayed(Duration(seconds: 1));
-    
-    String finalStatus = BleData.isConnected 
-        ? "✅ DIAGNÓSTICO EXITOSO - Dispositivo conectado"
-        : "⚠️ DIAGNÓSTICO COMPLETADO - Revisa logs para detalles";
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(finalStatus),
-        backgroundColor: BleData.isConnected ? Colors.green : Colors.orange,
-        duration: Duration(seconds: 4),
-      ),
-    );
-    
-    // 6. Forzar actualización de UI
-    if (mounted) {
-      setState(() {
-        // Actualizar todas las variables de debug
-      });
-    }
-    
-    print("🔧 === DIAGNÓSTICO COMPLETADO ===");
-    print("🔧 Estado final: isConnected = ${BleData.isConnected}");
-    
   } catch (e) {
-    print("❌ Error en diagnóstico: $e");
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("❌ Error en diagnóstico: $e"),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 5),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("❌ ERROR"),
+        content: Text("Error ejecutando diagnóstico: $e"),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))],
       ),
     );
   }
