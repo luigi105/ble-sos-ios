@@ -573,42 +573,105 @@ static Future<String> checkCurrentPermissionStatus() async {
 // ✅ NUEVA FUNCIÓN: Mostrar notificación persistente de monitoreo
 static Future<void> showPersistentMonitoringNotification() async {
   try {
-    print("📌 Creando notificación persistente de servicio BLE...");
+    print("📌 === INICIANDO CREACIÓN NOTIFICACIÓN PERSISTENTE ===");
     
-    if (_localNotifications == null) {
-      print("⚠️ LocalNotifications no inicializado, inicializando...");
-      await _setupLocalNotifications();
-      await Future.delayed(Duration(seconds: 2)); // ✅ Esperar inicialización
+    // ✅ FORZAR INICIALIZACIÓN MÚLTIPLES VECES
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      print("📌 Intento $attempt/3 de inicialización...");
+      
+      if (_localNotifications == null) {
+        print("⚠️ LocalNotifications null, forzando inicialización...");
+        await _setupLocalNotifications();
+        await Future.delayed(Duration(seconds: 2));
+      }
+      
+      if (_localNotifications != null) {
+        print("✅ LocalNotifications inicializado en intento $attempt");
+        break;
+      } else {
+        print("❌ Intento $attempt falló, reintentando...");
+        await Future.delayed(Duration(seconds: 1));
+      }
     }
     
     if (_localNotifications == null) {
-      print("❌ No se pudo inicializar LocalNotifications para notificación persistente");
+      print("❌ CRÍTICO: No se pudo inicializar LocalNotifications después de 3 intentos");
       return;
     }
     
+    // ✅ VERIFICAR PERMISOS EXPLÍCITAMENTE
+    print("📌 Verificando permisos de notificaciones...");
+    try {
+      final IOSFlutterLocalNotificationsPlugin? iosImplementation =
+          _localNotifications!.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      
+      if (iosImplementation != null) {
+        final bool? granted = await iosImplementation.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+          critical: true,
+        );
+        print("📌 Permisos de notificación: ${granted ?? 'null'}");
+        
+        if (granted != true) {
+          print("❌ Permisos de notificación denegados o null");
+          return;
+        }
+      }
+    } catch (e) {
+      print("⚠️ Error verificando permisos: $e");
+    }
+    
+    // ✅ INTENTAR CREAR NOTIFICACIÓN
     const int persistentNotificationId = 1000;
+    
+    print("📌 Creando notificación con ID $persistentNotificationId...");
     
     await _localNotifications!.show(
       persistentNotificationId,
-      "🔵 BLE SOS - Servicio Activo", // ✅ TÍTULO CLARO
+      "🔵 BLE SOS - Servicio Activo",
       "Sistema de emergencia operativo 24/7 - Dispositivo Holy-IOT monitoreado",
       const NotificationDetails(
         iOS: DarwinNotificationDetails(
-          presentAlert: true,  // ✅ CRÍTICO: Mostrar alerta para que aparezca
-          presentBadge: false, // ✅ Sin badge 
+          presentAlert: true,  // ✅ MOSTRAR ALERTA
+          presentBadge: true,  // ✅ CAMBIAR: Habilitar badge para ver si aparece
           presentSound: false, // ✅ Sin sonido
-          interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir usuario
+          interruptionLevel: InterruptionLevel.timeSensitive, // ✅ CAMBIAR: Más prominente
           categoryIdentifier: 'BLE_SERVICE_PERSISTENT',
           threadIdentifier: 'ble_service',
           subtitle: 'Servicio de Emergencia BLE',
+          badgeNumber: 1, // ✅ AGREGAR: Número en badge
         ),
       ),
     );
     
-    print("✅ Notificación persistente 'BLE SOS - Servicio Activo' creada y visible");
+    print("✅ show() ejecutado exitosamente");
+    
+    // ✅ VERIFICAR QUE SE CREÓ
+    await Future.delayed(Duration(seconds: 1));
+    
+    try {
+      final List<PendingNotificationRequest> pendingNotifications = 
+          await _localNotifications!.pendingNotificationRequests();
+      print("📌 Notificaciones pendientes: ${pendingNotifications.length}");
+      
+      for (var notification in pendingNotifications) {
+        print("   - ID: ${notification.id}, Título: ${notification.title}");
+      }
+      
+      bool found = pendingNotifications.any((n) => n.id == persistentNotificationId);
+      print("📌 ¿Notificación persistente encontrada?: $found");
+      
+    } catch (e) {
+      print("⚠️ Error verificando notificaciones pendientes: $e");
+    }
+    
+    print("✅ === NOTIFICACIÓN PERSISTENTE COMPLETADA ===");
     
   } catch (e) {
-    print("❌ Error creando notificación persistente: $e");
+    print("❌ Error CRÍTICO creando notificación persistente: $e");
+    print("❌ Stack trace: ${e.toString()}");
   }
 }
 
