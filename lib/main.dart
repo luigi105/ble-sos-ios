@@ -449,75 +449,106 @@ Future<void> _runDiagnostic() async {
       ),
     );
     
-    // 1. Diagnóstico del sistema
+    // 1. Verificar configuración guardada
+    BleData.verifyConfiguration();
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    // 2. Diagnóstico del sistema
     await debugBluetoothSystem();
     
     await Future.delayed(Duration(seconds: 1));
     
-    // 2. Verificar inicialización
+    // 3. Verificar inicialización iOS
     if (Platform.isIOS) {
       try {
         await IOSPlatformManager.initialize();
         print("✅ IOSPlatformManager re-inicializado");
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("✅ IOSPlatformManager inicializado"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
       } catch (e) {
         print("❌ Error re-inicializando IOSPlatformManager: $e");
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("❌ Error IOSPlatformManager: $e"),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     }
     
     await Future.delayed(Duration(seconds: 1));
     
-    // 3. Escaneo básico
-    bool holyIotFound = await basicScanForHolyIot();
+    // 4. ✅ CAMBIO: Usar directamente startScanAndConnectSimple()
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔍 Buscando Holy-IOT y conectando..."),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
     
-    if (holyIotFound) {
+    // ✅ REEMPLAZADO: basicScanForHolyIot() por startScanAndConnectSimple()
+    bool connected = await startScanAndConnectSimple();
+    
+    if (connected) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("✅ Holy-IOT encontrado! Intentando conectar..."),
+          content: Text("🎉 ¡CONEXIÓN EXITOSA!"),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 4),
         ),
       );
       
-      // 4. Intentar conexión
-      await Future.delayed(Duration(seconds: 1));
-      bool connected = await startScanAndConnect();
-      
-      if (connected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("🎉 ¡CONEXIÓN EXITOSA!"),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("⚠️ Holy-IOT encontrado pero falla la conexión"),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
-          ),
-        );
+      // Actualizar UI
+      if (mounted) {
+        setState(() {
+          // La UI se actualizará automáticamente porque BleData.isConnected cambió
+        });
       }
       
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("❌ Holy-IOT no encontrado. Verifica que esté encendido y cerca."),
+          content: Text("❌ No se pudo encontrar o conectar con Holy-IOT. Revisa los logs."),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
+          duration: Duration(seconds: 5),
         ),
       );
     }
     
-    // 5. Actualizar UI
+    // 5. Mostrar estado final
+    await Future.delayed(Duration(seconds: 1));
+    
+    String finalStatus = BleData.isConnected 
+        ? "✅ DIAGNÓSTICO EXITOSO - Dispositivo conectado"
+        : "⚠️ DIAGNÓSTICO COMPLETADO - Revisa logs para detalles";
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(finalStatus),
+        backgroundColor: BleData.isConnected ? Colors.green : Colors.orange,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    
+    // 6. Forzar actualización de UI
     if (mounted) {
       setState(() {
-        // Forzar actualización del debug
+        // Actualizar todas las variables de debug
       });
     }
     
     print("🔧 === DIAGNÓSTICO COMPLETADO ===");
+    print("🔧 Estado final: isConnected = ${BleData.isConnected}");
     
   } catch (e) {
     print("❌ Error en diagnóstico: $e");
