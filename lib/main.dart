@@ -695,7 +695,7 @@ Future<void> _initializeiOS() async {
               print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
               if (_isMounted && navigatorKey.currentContext != null) {
                 Navigator.push(
-                  navigationKey.currentContext!,
+                  navigatorKey.currentContext!
                   MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
                 );
               }
