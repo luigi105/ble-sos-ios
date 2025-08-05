@@ -327,6 +327,12 @@ Widget build(BuildContext context) {
             decoration: BoxDecoration(
               border: Border.all(
                 color: nuevoValorBoton == 2 
+                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: nuevoValorBoton == 2 
                 ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
                 : Colors.white,
             ),
@@ -690,10 +696,4 @@ Widget build(BuildContext context) {
       });
     }
   }
-} 
-                  ? (Platform.isIOS ? Colors.blue : Colors.green)
-                  : Colors.grey.shade300,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: nuevoValorBoton == 2
+}
