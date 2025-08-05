@@ -669,7 +669,7 @@ static Future<void> startHeartbeatNotifications() async {
   _heartbeatCount = 0;
   
   // ✅ Timer cada 30 segundos para pruebas (cambiar a 5 minutos después)
-  _heartbeatTimer = Timer.periodic(Duration(minutes: 2), (timer) async {{
+  _heartbeatTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
     try {
       _heartbeatCount++;
       print("💓 Heartbeat #$_heartbeatCount - Despertando app...");
