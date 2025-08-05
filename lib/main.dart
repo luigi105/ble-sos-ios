@@ -342,6 +342,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   int _heartbeatCount = 0;
   String _bluetoothState = "Verificando...";
 
+  /*
   // ✅ VARIABLES DE DEBUG CONSOLIDADAS (sin duplicaciones)
   int _scanAttempts = 0;
   int _devicesFound = 0;
@@ -374,6 +375,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   String _lastNotificationTest = "Sin probar";
   String _iosManagerStatus = "Sin inicializar";
   String _localNotificationStatus = "Sin verificar";
+*/
 
    @override
   void initState() {
@@ -734,68 +736,7 @@ Future<void> _initializeiOS() async {
   print("✅ iOS inicializado con timer de recovery para discovery");
 }
 
-Future<void> _testPersistentNotification() async {
-  try {
-    print("🔔 === PRUEBA MANUAL DE NOTIFICACIÓN ===");
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("🔔 Probando notificación persistente..."),
-        backgroundColor: Colors.purple,
-        duration: Duration(seconds: 2),
-      ),
-    );
-    
-    await Future.delayed(Duration(seconds: 1));
-    
-    // Intentar crear notificación directamente
-    await IOSPlatformManager.showPersistentMonitoringNotification();
-    
-    await Future.delayed(Duration(seconds: 2));
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("✅ Comando de notificación ejecutado. ¿Apareció?"),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 4),
-      ),
-    );
-    
-    // También probar una notificación simple
-    await Future.delayed(Duration(seconds: 1));
-    
-    try {
-      await IOSPlatformManager.showStatusNotification("🧪 Prueba de notificación simple");
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("🧪 También enviada notificación simple de prueba"),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("❌ Error en notificación simple: $e"),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
-    
-  } catch (e) {
-    print("❌ Error en prueba de notificación: $e");
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("❌ Error: $e"),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 5),
-      ),
-    );
-  }
-}
+
 
 Future<void> _attemptAutoConnection() async {
   // Solo intentar si BLE está habilitado y no estamos ya conectados
@@ -2152,7 +2093,7 @@ Future<bool> startScanAndConnect() async {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // ✅ DEBUG CONTAINER AMPLIADO CON NOTIFICACIONES
-                Container(
+           /*     Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8), // ✅ Reducir padding para más espacio
                   margin: const EdgeInsets.only(bottom: 12), // ✅ Reducir margen
@@ -2257,26 +2198,7 @@ Future<bool> startScanAndConnect() async {
                     ],
                   ),
                 ),
-                // ✅ BOTÓN DE PRUEBA NOTIFICACIÓN (temporal)
-            if (Platform.isIOS) 
-              Container(
-                width: size.width * 0.8,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await _testPersistentNotification();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  child: const Text(
-                    "🔔 PROBAR NOTIFICACIÓN",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
+            */
  // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
               
               if (BleData.conBoton == 1) ...[
