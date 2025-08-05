@@ -20,6 +20,9 @@ class IOSPlatformManager {
   static FlutterLocalNotificationsPlugin? _localNotifications;
   static DateTime? _lastLocationSent;
   static const Duration _minimumLocationInterval = Duration(minutes: 5);
+  static Timer? _heartbeatTimer;
+  static int _heartbeatCount = 0;
+  static bool _heartbeatActive = false;
   
   // ✅ INICIALIZACIÓN ESPECÍFICA PARA iOS
 static Future<void> initialize() async {
@@ -41,6 +44,9 @@ static Future<void> initialize() async {
     if (BleData.conBoton == 1) {
       await Future.delayed(Duration(seconds: 2));
       await showPersistentMonitoringNotification();
+       // ✅ INICIAR HEARTBEAT NOTIFICATIONS
+      await Future.delayed(Duration(seconds: 3));
+      await startHeartbeatNotifications();
     }
     
     _isInitialized = true;
@@ -638,6 +644,8 @@ static Future<void> removePersistentMonitoringNotification() async {
   // ✅ LIMPIAR RECURSOS
 static Future<void> dispose() async {
   print("🧹 Limpiando recursos iOS...");
+  // ✅ DETENER HEARTBEAT
+  stopHeartbeatNotifications();
   
   await removePersistentMonitoringNotification();
   
@@ -647,6 +655,152 @@ static Future<void> dispose() async {
   
   print("✅ Recursos iOS limpiados y notificación persistente removida");
 }
+
+static Future<void> startHeartbeatNotifications() async {
+  if (_heartbeatActive || !Platform.isIOS) {
+    print("💓 Heartbeat ya está activo o no es iOS");
+    return;
+  }
+  
+  print("💓 === INICIANDO HEARTBEAT NOTIFICATIONS ===");
+  print("💓 Frecuencia: 30 segundos (modo prueba)");
+  
+  _heartbeatActive = true;
+  _heartbeatCount = 0;
+  
+  // ✅ Timer cada 30 segundos para pruebas (cambiar a 5 minutos después)
+  _heartbeatTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+    try {
+      _heartbeatCount++;
+      print("💓 Heartbeat #$_heartbeatCount - Despertando app...");
+      
+      // ✅ ENVIAR NOTIFICACIÓN SILENCIOSA que despierta la app
+      await _sendHeartbeatNotification();
+      
+      // ✅ VERIFICAR Y FORZAR RECONEXIÓN BLE si es necesario
+      await _checkAndForceReconnection();
+      
+      print("💓 Heartbeat #$_heartbeatCount completado");
+      
+    } catch (e) {
+      print("❌ Error en heartbeat #$_heartbeatCount: $e");
+    }
+  });
+  
+  print("✅ Heartbeat notifications iniciado - Latido cada 30 segundos");
+}
+
+// 💓 FUNCIÓN para enviar notificación silenciosa de heartbeat
+static Future<void> _sendHeartbeatNotification() async {
+  try {
+    if (_localNotifications == null) {
+      print("⚠️ LocalNotifications no disponible para heartbeat");
+      return;
+    }
+    
+    // ✅ ID único para cada heartbeat (evitar acumulación)
+    int heartbeatId = 2000 + (_heartbeatCount % 100);
+    
+    await _localNotifications!.show(
+      heartbeatId,
+      "💓 BLE SOS Heartbeat", // Título visible para debug
+      "Manteniendo servicio activo - Heartbeat #$_heartbeatCount",
+      const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: false,     // ✅ NO mostrar alerta (silenciosa)
+          presentBadge: false,     // ✅ NO mostrar badge
+          presentSound: false,     // ✅ NO hacer sonido
+          interruptionLevel: InterruptionLevel.passive, // ✅ Mínima interrupción
+          categoryIdentifier: 'BLE_HEARTBEAT',
+          threadIdentifier: 'heartbeat',
+        ),
+      ),
+    );
+    
+    // ✅ AUTO-ELIMINAR la notificación después de 5 segundos
+    Future.delayed(Duration(seconds: 5), () async {
+      try {
+        await _localNotifications!.cancel(heartbeatId);
+      } catch (e) {
+        // Ignorar errores de cancelación
+      }
+    });
+    
+    print("💓 Heartbeat notification #$_heartbeatCount enviada y programada para auto-eliminar");
+    
+  } catch (e) {
+    print("❌ Error enviando heartbeat notification: $e");
+  }
+}
+
+// 🔵 FUNCIÓN para verificar y forzar reconexión BLE
+static Future<void> _checkAndForceReconnection() async {
+  try {
+    // ✅ Solo si BLE está habilitado y no conectado
+    if (BleData.conBoton != 1 || BleData.isConnected) {
+      print("💓 BLE OK - conBoton: ${BleData.conBoton}, conectado: ${BleData.isConnected}");
+      return;
+    }
+    
+    print("💓 BLE desconectado - intentando reconexión forzada...");
+    
+    // ✅ Verificar estado de Bluetooth
+    BluetoothAdapterState adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      print("💓 Bluetooth apagado: $adapterState");
+      return;
+    }
+    
+    // ✅ FORZAR ESCANEO RÁPIDO para encontrar dispositivo
+    print("💓 Iniciando escaneo de heartbeat...");
+    
+    await FlutterBluePlus.stopScan();
+    await FlutterBluePlus.startScan(timeout: Duration(seconds: 8));
+    
+    // ✅ Buscar Holy-IOT en resultados
+    bool deviceFound = false;
+    
+    await for (List<ScanResult> results in FlutterBluePlus.scanResults) {
+      for (var result in results) {
+        if (result.device.platformName.toLowerCase() == "holy-iot") {
+          print("💓 Holy-IOT encontrado en heartbeat - conectando...");
+          deviceFound = true;
+          
+          await FlutterBluePlus.stopScan();
+          
+          // ✅ CONECTAR con autoConnect
+          await result.device.connect(
+            autoConnect: true,
+            timeout: Duration(seconds: 10),
+          );
+          
+          print("✅ Reconexión por heartbeat exitosa");
+          return;
+        }
+      }
+    }
+    
+    if (!deviceFound) {
+      print("💓 Holy-IOT no encontrado en escaneo de heartbeat");
+    }
+    
+  } catch (e) {
+    print("❌ Error en reconexión de heartbeat: $e");
+  }
+}
+
+// 💓 FUNCIÓN para detener heartbeat
+static void stopHeartbeatNotifications() {
+  if (_heartbeatTimer != null) {
+    _heartbeatTimer!.cancel();
+    _heartbeatTimer = null;
+    _heartbeatActive = false;
+    _heartbeatCount = 0;
+    print("💓 Heartbeat notifications detenido");
+  }
+}
+
+
   
   // ✅ VERIFICAR SI ESTÁ EJECUTÁNDOSE EN iOS
   static bool get isIOS => Platform.isIOS;
