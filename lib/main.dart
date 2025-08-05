@@ -561,18 +561,16 @@ Future<void> _initializeiOS() async {
         print("✅ IOSPlatformManager inicializado");
 
        // 🔔 MOSTRAR NOTIFICACIÓN PERSISTENTE después de inicializar
-        /*
-      Future.delayed(Duration(seconds: 3), () async {
+        
+      Future.delayed(Duration(seconds: 4), () async {
         try {
-          print("🔔 Creando notificación persistente de servicio BLE...");
+          print("🔔 Llamada de respaldo: Creando notificación persistente...");
           await IOSPlatformManager.showPersistentMonitoringNotification();
-          print("✅ Notificación persistente BLE creada");
+          print("✅ Notificación persistente creada desde main.dart");
         } catch (e) {
-          print("❌ Error creando notificación persistente BLE: $e");
+          print("❌ Error en llamada de respaldo: $e");
         }
       });
-      */
-        
         // Luego solicitar permisos
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {

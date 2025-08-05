@@ -15,7 +15,6 @@ import 'package:audioplayers/audioplayers.dart';
 
 
 class IOSPlatformManager {
-  static bool _persistentNotificationShown = false;
   static bool _isInitialized = false;
   static StreamSubscription<Position>? _locationSubscription;
   static FlutterLocalNotificationsPlugin? _localNotifications;
@@ -38,17 +37,14 @@ static Future<void> initialize() async {
     // 3. Configurar manejo de ciclo de vida de la app
     _setupAppLifecycleHandling();
     
-    // ✅ 4. VERIFICAR SI NECESITA CREAR NOTIFICACIÓN PERSISTENTE
-    if (BleData.conBoton == 1 && !_persistentNotificationShown) {
-      print("🔔 Creando notificación persistente (primera vez o después de dispose)");
-      await Future.delayed(Duration(seconds: 2)); // Esperar inicialización
+    // ✅ 4. CREAR NOTIFICACIÓN PERSISTENTE SIMPLE (como antes)
+    if (BleData.conBoton == 1) {
+      await Future.delayed(Duration(seconds: 2));
       await showPersistentMonitoringNotification();
-    } else if (BleData.conBoton == 1 && _persistentNotificationShown) {
-      print("✅ Notificación persistente ya fue creada");
     }
     
     _isInitialized = true;
-    print("✅ iOS Platform Manager inicializado correctamente");
+    print("✅ iOS Platform Manager inicializado con notificación persistente");
     
   } catch (e) {
     print("❌ Error inicializando iOS Platform Manager: $e");
@@ -579,7 +575,7 @@ static Future<String> checkCurrentPermissionStatus() async {
 
 static Future<void> showPersistentMonitoringNotification() async {
   try {
-    print("📌 Creando notificación VERDADERAMENTE persistente...");
+    print("📌 Creando notificación persistente de monitoreo...");
     
     if (_localNotifications == null) {
       await _setupLocalNotifications();
@@ -591,17 +587,8 @@ static Future<void> showPersistentMonitoringNotification() async {
       return;
     }
     
-    // ✅ ELIMINAR CUALQUIER NOTIFICACIÓN PREVIA PRIMERO
     const int persistentNotificationId = 1000;
-    try {
-      await _localNotifications!.cancel(persistentNotificationId);
-      await Future.delayed(Duration(milliseconds: 500)); // Pausa para limpieza
-      print("🗑️ Notificación previa eliminada");
-    } catch (e) {
-      print("ℹ️ No había notificación previa: $e");
-    }
     
-    // ✅ CREAR NOTIFICACIÓN PERSISTENTE QUE NO SE PUEDE ELIMINAR
     await _localNotifications!.show(
       persistentNotificationId,
       "🔵 BLE SOS - Servicio Activo",
@@ -609,26 +596,17 @@ static Future<void> showPersistentMonitoringNotification() async {
       const NotificationDetails(
         iOS: DarwinNotificationDetails(
           presentAlert: true,
-          presentBadge: false, // ✅ Sin badge para evitar confusión
-          presentSound: false, // ✅ Sin sonido
-          interruptionLevel: InterruptionLevel.passive, // ✅ No interrumpir
-          categoryIdentifier: 'BLE_SERVICE_PERSISTENT',
-          threadIdentifier: 'ble_service_persistent', // ✅ Thread único
-          subtitle: 'Servicio Activo',
-          
-          // ✅ CRÍTICO: Configuraciones para persistencia
-          attachments: null, // Sin adjuntos
-          
-          // ✅ NO agregar actions que puedan causar dismiss
+          presentBadge: false,
+          presentSound: false,
+          interruptionLevel: InterruptionLevel.passive,
+          categoryIdentifier: 'MONITORING_PERSISTENT',
+          threadIdentifier: 'monitoring',
+          subtitle: 'Servicio de Emergencia',
         ),
       ),
     );
     
-    print("✅ Notificación persistente creada con ID $persistentNotificationId");
-    
-    // ✅ VERIFICAR QUE SE CREÓ Y MARCAR COMO CREADA
-    await Future.delayed(Duration(seconds: 1));
-    _persistentNotificationShown = true; // ✅ Flag para control
+    print("✅ Notificación persistente de monitoreo creada y visible");
     
   } catch (e) {
     print("❌ Error creando notificación persistente: $e");
@@ -661,17 +639,13 @@ static Future<void> removePersistentMonitoringNotification() async {
 static Future<void> dispose() async {
   print("🧹 Limpiando recursos iOS...");
   
-  // ✅ Remover notificación persistente al cerrar
   await removePersistentMonitoringNotification();
   
   await _locationSubscription?.cancel();
   _locationSubscription = null;
   _isInitialized = false;
   
-  // ✅ RESETEAR FLAG para permitir crear notificación en próximo inicio
-  _persistentNotificationShown = false;
-  
-  print("✅ Recursos iOS limpiados y flag reseteado");
+  print("✅ Recursos iOS limpiados y notificación persistente removida");
 }
   
   // ✅ VERIFICAR SI ESTÁ EJECUTÁNDOSE EN iOS
