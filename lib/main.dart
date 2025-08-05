@@ -437,6 +437,70 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
     }
   }
 
+
+Future<void> _testPersistentNotification() async {
+  try {
+    print("🔔 === PRUEBA MANUAL DE NOTIFICACIÓN ===");
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🔔 Probando notificación persistente..."),
+        backgroundColor: Colors.purple,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    await Future.delayed(Duration(seconds: 1));
+    
+    // Intentar crear notificación directamente
+    await IOSPlatformManager.showPersistentMonitoringNotification();
+    
+    await Future.delayed(Duration(seconds: 2));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("✅ Comando de notificación ejecutado. ¿Apareció?"),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    
+    // También probar una notificación simple
+    await Future.delayed(Duration(seconds: 1));
+    
+    try {
+      await IOSPlatformManager.showStatusNotification("🧪 Prueba de notificación simple");
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("🧪 También enviada notificación simple de prueba"),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Error en notificación simple: $e"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+    
+  } catch (e) {
+    print("❌ Error en prueba de notificación: $e");
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("❌ Error: $e"),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 5),
+      ),
+    );
+  }
+}
+
   
 Future<void> _runDiagnostic() async {
   try {
@@ -2200,6 +2264,25 @@ Future<bool> startScanAndConnect() async {
                 ),
             */
  // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
+ if (Platform.isIOS) 
+  Container(
+    width: size.width * 0.8,
+    margin: const EdgeInsets.only(bottom: 8),
+    child: ElevatedButton(
+      onPressed: () async {
+        await _testPersistentNotification();
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.purple,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+      ),
+      child: const Text(
+        "🔔 PROBAR NOTIFICACIÓN",
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      ),
+    ),
+  ),
               
               if (BleData.conBoton == 1) ...[
                 Container(
