@@ -2264,7 +2264,7 @@ Future<bool> startScanAndConnect() async {
                 ),
             */
  // ✅ CIERRE CORRECTO DEL CONTAINER PRINCIPAL
- if (Platform.isIOS) 
+/* if (Platform.isIOS) 
   Container(
     width: size.width * 0.8,
     margin: const EdgeInsets.only(bottom: 8),
@@ -2282,7 +2282,7 @@ Future<bool> startScanAndConnect() async {
         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
       ),
     ),
-  ),
+  ), */
               
               if (BleData.conBoton == 1) ...[
                 Container(
