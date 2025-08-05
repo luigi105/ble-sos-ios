@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
@@ -213,65 +212,99 @@ Widget build(BuildContext context) {
   
   return Scaffold(
     appBar: AppBar(
-      title: const Text("🍎 Configuración iOS", style: TextStyle(color: Colors.white)),
-      backgroundColor: Colors.blue, // Azul para iOS
+      title: const Text("Permisos para App SOS", style: TextStyle(color: Colors.white)), // ✅ CAMBIO 1: Nuevo título
+      backgroundColor: Colors.blue,
       iconTheme: const IconThemeData(color: Colors.white),
     ),
     body: SafeArea(
-      child: SingleChildScrollView( // ✅ CRÍTICO: Permite scroll
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Encabezado específico iOS
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12), // ✅ REDUCIDO padding
-              decoration: BoxDecoration(
-                color: allPermissionsGranted ? Colors.blue.shade50 : Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: allPermissionsGranted ? Colors.blue : Colors.orange,
+            // ✅ CAMBIO 2: Solo mostrar encuadre si permisos NO están otorgados
+            if (!allPermissionsGranted) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.warning,
+                      color: Colors.orange,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Permisos pendientes",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "iOS necesita configuraciones específicas",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                children: [
-                  Icon(
-                    allPermissionsGranted ? Icons.phone_iphone : Icons.warning,
-                    color: allPermissionsGranted ? Colors.blue : Colors.orange,
-                    size: 40, // ✅ REDUCIDO tamaño
-                  ),
-                  const SizedBox(height: 6), // ✅ REDUCIDO espacio
-                  Text(
-                    allPermissionsGranted 
-                      ? "¡iOS configurado correctamente!"
-                      : "Configuración iOS pendiente",
-                    style: TextStyle(
-                      fontSize: 16, // ✅ REDUCIDO font
-                      fontWeight: FontWeight.bold,
-                      color: allPermissionsGranted ? Colors.blue.shade700 : Colors.orange.shade700,
+              const SizedBox(height: 16),
+            ] else ...[
+              // ✅ CAMBIO 3: Mostrar confirmación cuando todos los permisos están otorgados
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 40,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    allPermissionsGranted
-                      ? "Tu dispositivo iOS funcionará de manera óptima"
-                      : "iOS necesita configuraciones específicas",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12, // ✅ REDUCIDO font
-                      color: allPermissionsGranted ? Colors.blue.shade600 : Colors.orange.shade600,
+                    const SizedBox(height: 6),
+                    Text(
+                      "¡Permisos configurados correctamente!",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      "Tu app SOS funcionará de manera óptima",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 16), // ✅ REDUCIDO espacio
+              const SizedBox(height: 16),
+            ],
             
             // Información específica iOS
             Container(
-              padding: const EdgeInsets.all(10), // ✅ REDUCIDO padding
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
@@ -282,13 +315,13 @@ Widget build(BuildContext context) {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info, color: Colors.blue.shade700, size: 16), // ✅ REDUCIDO
+                      Icon(Icons.info, color: Colors.blue.shade700, size: 16),
                       const SizedBox(width: 6),
                       Text(
                         "Ventajas iOS:",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14, // ✅ REDUCIDO font
+                          fontSize: 14,
                           color: Colors.blue.shade700,
                         ),
                       ),
@@ -318,7 +351,7 @@ Widget build(BuildContext context) {
                 priority: "Crítico",
               ),
               
-              const SizedBox(height: 12), // ✅ REDUCIDO espacio
+              const SizedBox(height: 12),
               
               _buildIOSPermissionTile(
                 title: "Bluetooth",
@@ -341,7 +374,7 @@ Widget build(BuildContext context) {
               ),
             ],
             
-            const SizedBox(height: 20), // ✅ ESPACIO FINAL
+            const SizedBox(height: 20),
             
             // Botón de continuar
             SizedBox(
@@ -349,13 +382,13 @@ Widget build(BuildContext context) {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: allPermissionsGranted ? Colors.blue : Colors.grey,
+                  backgroundColor: allPermissionsGranted ? Colors.green : Colors.grey,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14), // ✅ REDUCIDO padding
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(
-                  allPermissionsGranted ? "Continuar con iOS" : "Configurar más tarde",
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // ✅ REDUCIDO font
+                  allPermissionsGranted ? "✅ Continuar" : "Configurar más tarde",
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -365,11 +398,10 @@ Widget build(BuildContext context) {
               Text(
                 "💡 iOS funciona mejor con todas las configuraciones",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600), // ✅ REDUCIDO font
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
               ),
             ],
             
-            // ✅ ESPACIO FINAL EXTRA para asegurar scroll
             const SizedBox(height: 40),
           ],
         ),
@@ -399,22 +431,22 @@ Widget build(BuildContext context) {
       borderRadius: BorderRadius.circular(8),
     ),
     child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // ✅ REDUCIDO padding
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       leading: Icon(
         icon,
-        color: isGranted ? Colors.blue : priorityColor,
-        size: 28, // ✅ REDUCIDO tamaño
+        color: isGranted ? Colors.green : priorityColor,
+        size: 28,
       ),
       title: Row(
         children: [
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), // ✅ REDUCIDO font
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2), // ✅ REDUCIDO padding
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
               color: priorityColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(4),
@@ -423,7 +455,7 @@ Widget build(BuildContext context) {
             child: Text(
               priority,
               style: TextStyle(
-                fontSize: 9, // ✅ REDUCIDO font
+                fontSize: 9,
                 fontWeight: FontWeight.bold,
                 color: priorityColor,
               ),
@@ -431,12 +463,12 @@ Widget build(BuildContext context) {
           ),
         ],
       ),
-      subtitle: Text(description, style: const TextStyle(fontSize: 12)), // ✅ REDUCIDO font
+      subtitle: Text(description, style: const TextStyle(fontSize: 12)),
       trailing: isGranted
-        ? const Icon(Icons.check_circle, color: Colors.blue, size: 24) // ✅ REDUCIDO tamaño
+        ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
         : TextButton(
             onPressed: onTap,
-            child: const Text("Configurar", style: TextStyle(fontSize: 12)), // ✅ REDUCIDO font
+            child: const Text("Configurar", style: TextStyle(fontSize: 12)),
           ),
     ),
   );

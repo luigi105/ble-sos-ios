@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:io'; // ✅ IMPORT CRÍTICO para Platform.isIOS
+import 'dart:io';
 import 'ble_data.dart';
 import 'coms.dart';
 import 'permission_guide.dart';
 import 'ios_permission_guide.dart';
-// ✅ AGREGAR ESTE IMPORT FALTANTE
 import 'ios_platform_manager.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -92,8 +91,6 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
-
-
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -103,16 +100,80 @@ Widget build(BuildContext context) {
         Platform.isIOS ? "🍎 Configuración iOS" : "🤖 Configuración",
         style: const TextStyle(color: Colors.white),
       ),
-      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green, // ✅ Color específico por plataforma
+      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green,
       iconTheme: const IconThemeData(color: Colors.white),
-
     ),
     body: SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ NUEVA SECCIÓN: Información de plataforma
+          // ✅ CAMBIO MAYOR: Sección de permisos MOVIDA ARRIBA (antes de IMEI)
+          Text(
+            Platform.isIOS ? "Permisos para App SOS" : "Permisos del Sistema", 
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListTile(
+              leading: Icon(
+                Platform.isIOS ? Icons.settings_applications : Icons.security,
+                color: Platform.isIOS ? Colors.blue : Colors.green,
+                size: 32,
+              ),
+              title: Text(
+                Platform.isIOS ? "Permisos para App SOS" : "Permisos del Sistema", // ✅ CAMBIO: Nuevo título
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                Platform.isIOS
+                  ? "• Ubicación siempre\n• Bluetooth en background\n• Notificaciones críticas" // ✅ CAMBIO: Descripción actualizada
+                  : "• Ubicación siempre\n• Bluetooth scan/connect\n• Llamadas telefónicas\n• Optimización de batería",
+              ),
+              trailing: ElevatedButton(
+                onPressed: () {
+                  if (Platform.isIOS) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  side: BorderSide(
+                    color: Platform.isIOS ? Colors.blue : Colors.grey, 
+                    width: 1,
+                  ),
+                  backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: Text(
+                  "Permisos", // ✅ CAMBIO: Nuevo texto del botón
+                  style: TextStyle(
+                    color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          _buildDivider(),
+          
+          // ✅ Información de plataforma
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -164,13 +225,12 @@ Widget build(BuildContext context) {
           _buildConfigRowImei(),
           _buildDivider(),
           
-          // ✅ SECCIÓN MAC ADDRESS - Solo mostrar si conBoton == 1
+          // MAC ADDRESS - Solo mostrar si conBoton == 1
           if (BleData.conBoton == 1) ...[
             _buildConfigRow("MacAddress BLE:", BleData.macAddress, macAddressController, "Ingresar nuevo MacAddress"),
             _buildSaveButton("Guardar MacAddress", _guardarMacAddress),
             _buildDivider(),
           ] else ...[
-            // ✅ MOSTRAR información cuando BLE está deshabilitado
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -202,7 +262,7 @@ Widget build(BuildContext context) {
           _buildSaveButton("Actualizar Teléfono SOS", _actualizarTelefonoSOS),
           _buildDivider(),
           
-          // ✅ SECCIÓN MEJORADA: Modo de operación con descripciones
+          // SECCIÓN MEJORADA: Modo de operación con descripciones
           Text(
             "Modo de Operación", 
             style: TextStyle(
@@ -267,12 +327,6 @@ Widget build(BuildContext context) {
             decoration: BoxDecoration(
               border: Border.all(
                 color: nuevoValorBoton == 2 
-                  ? (Platform.isIOS ? Colors.blue : Colors.green)
-                  : Colors.grey.shade300,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: nuevoValorBoton == 2 
                 ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
                 : Colors.white,
             ),
@@ -313,7 +367,7 @@ Widget build(BuildContext context) {
           _buildSaveButton("Guardar Modo de Operación", _guardarConfigBotonBluetooth),
           _buildDivider(),
           
-          // ✅ SECCIÓN CONFIGURACIONES CON DESCRIPCIONES ESPECÍFICAS
+          // SECCIÓN CONFIGURACIONES CON DESCRIPCIONES ESPECÍFICAS
           Text(
             "Configuraciones de Emergencia", 
             style: TextStyle(
@@ -374,72 +428,7 @@ Widget build(BuildContext context) {
           
           _buildDivider(),
           
-          // ✅ SECCIÓN PERMISOS ESPECÍFICA POR PLATAFORMA
-          Text(
-            Platform.isIOS ? "Configuración del Sistema iOS" : "Permisos del Sistema", 
-            style: TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.bold,
-              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListTile(
-              leading: Icon(
-                Platform.isIOS ? Icons.settings_applications : Icons.security,
-                color: Platform.isIOS ? Colors.blue : Colors.green,
-                size: 32,
-              ),
-              title: Text(
-                Platform.isIOS ? "Configuración Específica iOS" : "Permisos del Sistema",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                Platform.isIOS
-                  ? "• Ubicación siempre\n• Bluetooth en background\n• Notificaciones críticas"
-                  : "• Ubicación siempre\n• Bluetooth scan/connect\n• Llamadas telefónicas\n• Optimización de batería",
-              ),
-              trailing: ElevatedButton(
-                onPressed: () {
-                  // ✅ NAVEGACIÓN DIRECTA CORREGIDA
-                  if (Platform.isIOS) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PermissionGuidePage()),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  side: BorderSide(
-                    color: Platform.isIOS ? Colors.blue : Colors.grey, 
-                    width: 1,
-                  ),
-                  backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                child: Text(
-                  Platform.isIOS ? "Configurar iOS" : "Configurar",
-                  style: TextStyle(
-                    color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
           // ✅ INFORMACIÓN ADICIONAL ESPECÍFICA POR PLATAFORMA
-          const SizedBox(height: 16),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -591,7 +580,6 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ✅ NUEVO: Widget para switches con descripciones
   Widget _buildConfigSwitch({
     required String title,
     required String subtitle,
@@ -702,9 +690,10 @@ Widget build(BuildContext context) {
       });
     }
   }
-
-
-
-
-
-}
+} 
+                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: nuevoValorBoton == 2

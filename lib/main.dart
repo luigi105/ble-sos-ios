@@ -626,26 +626,38 @@ Future<void> _initializeiOS() async {
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado");
 
-       // 🔔 MOSTRAR NOTIFICACIÓN PERSISTENTE después de inicializar
+        // 🔔 MOSTRAR NOTIFICACIÓN PERSISTENTE después de inicializar
+        Future.delayed(Duration(seconds: 4), () async {
+          try {
+            print("🔔 Llamada de respaldo: Creando notificación persistente...");
+            await IOSPlatformManager.showPersistentMonitoringNotification();
+            print("✅ Notificación persistente creada desde main.dart");
+          } catch (e) {
+            print("❌ Error en llamada de respaldo: $e");
+          }
+        });
         
-      Future.delayed(Duration(seconds: 4), () async {
-        try {
-          print("🔔 Llamada de respaldo: Creando notificación persistente...");
-          await IOSPlatformManager.showPersistentMonitoringNotification();
-          print("✅ Notificación persistente creada desde main.dart");
-        } catch (e) {
-          print("❌ Error en llamada de respaldo: $e");
-        }
-      });
         // Luego solicitar permisos
         requestPermissions().then((_) {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
             
+            // ✅ CORRECCIÓN: VERIFICAR TODOS LOS PERMISOS NECESARIOS
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+            bool bluetoothGranted = await Permission.bluetooth.isGranted;
+            bool notificationsGranted = await Permission.notification.isGranted;
             
-            if (!locationAlwaysGranted) {
-              print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
+            // ✅ NUEVA LÓGICA: Solo navegar si REALMENTE faltan permisos
+            bool allPermissionsGranted = locationAlwaysGranted && bluetoothGranted && notificationsGranted;
+            
+            print("🔍 Estado de permisos iOS:");
+            print("   📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
+            print("   🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
+            print("   🔔 Notificaciones: ${notificationsGranted ? '✅' : '❌'}");
+            print("   📊 Todos otorgados: ${allPermissionsGranted ? '✅' : '❌'}");
+            
+            if (!allPermissionsGranted) {
+              print("⚠️ Faltan permisos críticos iOS, mostrando pantalla de configuración...");
               if (_isMounted && navigatorKey.currentContext != null) {
                 Navigator.push(
                   navigatorKey.currentContext!,
@@ -653,7 +665,7 @@ Future<void> _initializeiOS() async {
                 );
               }
             } else {
-              print("✅ Permisos iOS configurados correctamente");
+              print("✅ Todos los permisos iOS están configurados correctamente - NO mostrar pantalla");
               
               // ✅ NUEVO: Intentar conexión automática después de verificar permisos
               _attemptAutoConnection();
@@ -668,7 +680,7 @@ Future<void> _initializeiOS() async {
         });
       });
     } else {
-      // ✅ MODO 2: Solo ubicación GPS (sin cambios)
+      // ✅ MODO 2: Solo ubicación GPS
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado para modo GPS");
         
@@ -676,18 +688,19 @@ Future<void> _initializeiOS() async {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
             
+            // ✅ CORRECCIÓN: Para modo GPS solo verificar ubicación
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
             
             if (!locationAlwaysGranted) {
               print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
               if (_isMounted && navigatorKey.currentContext != null) {
                 Navigator.push(
-                  navigatorKey.currentContext!,
+                  navigationKey.currentContext!,
                   MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
                 );
               }
             } else {
-              print("✅ Permisos iOS configurados correctamente para modo GPS");
+              print("✅ Permiso de ubicación iOS configurado correctamente para modo GPS - NO mostrar pantalla");
             }
           });
           
