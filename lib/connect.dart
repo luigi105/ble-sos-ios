@@ -134,13 +134,12 @@ void connectToDevice(BluetoothDevice device, BuildContext context, Function disc
               BleData.bleDisconnectionNotificationShown = false;
               BleData.reconnectionAttemptCount = 0;
               
-              // ✅ MOSTRAR NOTIFICACIÓN DE RECONEXIÓN con delay
-              Future.delayed(Duration(seconds: 1), () {
-                if (BleData.connectionNotificationsEnabled && BleData.conBoton == 1) {
-                  print("🔔 iOS: Mostrando notificación de reconexión...");
-                  CommunicationService().showBleConnectedNotification();
-                }
-              });
+              // ✅ REEMPLAZAR CON LLAMADA INMEDIATA:
+              if (BleData.connectionNotificationsEnabled && BleData.conBoton == 1) {
+                print("🔔 iOS: Mostrando notificación de reconexión INMEDIATA...");
+                CommunicationService().showBleConnectedNotification(); // SIN DELAY
+              }
+              
             } else {
               print("✅ iOS: Primera conexión (no mostrar notificación de reconexión)");
             }
