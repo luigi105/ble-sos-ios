@@ -342,7 +342,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   int _heartbeatCount = 0;
   String _bluetoothState = "Verificando...";
 
-  /*
+  
   // ✅ VARIABLES DE DEBUG CONSOLIDADAS (sin duplicaciones)
   int _scanAttempts = 0;
   int _devicesFound = 0;
@@ -375,7 +375,7 @@ class BleScanPageState extends State<BleScanPage> with WidgetsBindingObserver {
   String _lastNotificationTest = "Sin probar";
   String _iosManagerStatus = "Sin inicializar";
   String _localNotificationStatus = "Sin verificar";
-*/
+
 
    @override
   void initState() {
