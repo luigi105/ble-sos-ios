@@ -222,85 +222,50 @@ Widget build(BuildContext context) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ CAMBIO 2: Solo mostrar encuadre si permisos NO están otorgados
-            if (!allPermissionsGranted) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.warning,
-                      color: Colors.orange,
-                      size: 40,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Permisos pendientes",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "iOS necesita configuraciones específicas",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade600,
-                      ),
-                    ),
-                  ],
+            // ✅ CAMBIO 2: Mostrar encuadre específico según estado de permisos
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: allPermissionsGranted ? Colors.green.shade50 : Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: allPermissionsGranted ? Colors.green : Colors.orange,
                 ),
               ),
-              const SizedBox(height: 16),
-            ] else ...[
-              // ✅ CAMBIO 3: Mostrar confirmación cuando todos los permisos están otorgados
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 40,
+              child: Column(
+                children: [
+                  Icon(
+                    allPermissionsGranted ? Icons.check_circle : Icons.warning,
+                    color: allPermissionsGranted ? Colors.green : Colors.orange,
+                    size: 40,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    allPermissionsGranted 
+                      ? "¡Permisos configurados correctamente!"
+                      : "Permisos pendientes",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: allPermissionsGranted ? Colors.green.shade700 : Colors.orange.shade700,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "¡Permisos configurados correctamente!",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    allPermissionsGranted
+                      ? "Tu app SOS funcionará de manera óptima"
+                      : "iOS necesita configuraciones específicas",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: allPermissionsGranted ? Colors.green.shade600 : Colors.orange.shade600,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Tu app SOS funcionará de manera óptima",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green.shade600,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-            ],
+            ),
+            const SizedBox(height: 16),
             
             // Información específica iOS
             Container(
@@ -318,20 +283,15 @@ Widget build(BuildContext context) {
                       Icon(Icons.info, color: Colors.blue.shade700, size: 16),
                       const SizedBox(width: 6),
                       Text(
-                        "Ventajas iOS:",
+                        "Es de suma importancia activar todos los permisos para el buen funcionamiento de esta APP",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 16,
                           color: Colors.blue.shade700,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text("• 🔋 Batería dura 2-3 días", style: TextStyle(fontSize: 12)),
-                  const Text("• 🔄 Reconexión BLE automática", style: TextStyle(fontSize: 12)),
-                  const Text("• 📍 Ubicación en cambios >100m", style: TextStyle(fontSize: 12)),
-                  const Text("• 🚨 SOS garantizado 30 segundos", style: TextStyle(fontSize: 12)),
                 ],
               ),
             ),
@@ -345,6 +305,7 @@ Widget build(BuildContext context) {
               _buildIOSPermissionTile(
                 title: "Ubicación Siempre",
                 description: "Para emergencias 24/7",
+                extraText: "Es muy importante que seleccione en Settings (Configuración) de su móvil la opción \"Siempre\" (Always en inglés)",
                 icon: Icons.location_on,
                 isGranted: locationAlwaysGranted,
                 onTap: locationAlwaysGranted ? null : requestLocationAlways,
@@ -414,6 +375,7 @@ Widget build(BuildContext context) {
   Widget _buildIOSPermissionTile({
   required String title,
   required String description,
+  String? extraText, // ✅ NUEVO: Parámetro opcional para texto adicional
   required IconData icon,
   required bool isGranted,
   required String priority,
@@ -437,30 +399,47 @@ Widget build(BuildContext context) {
         color: isGranted ? Colors.green : priorityColor,
         size: 28,
       ),
-      title: Row(
+      title: Column( // ✅ CAMBIO: Envolver en Column para agregar texto adicional
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: priorityColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: priorityColor.withOpacity(0.3)),
+                ),
+                child: Text(
+                  priority,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: priorityColor,
+                  ),
+                ),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              color: priorityColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: priorityColor.withOpacity(0.3)),
-            ),
-            child: Text(
-              priority,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: priorityColor,
+          // ✅ NUEVO: Texto adicional si se proporciona
+          if (extraText != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              extraText,
+              style: const TextStyle(
+                fontSize: 14, // ✅ Mismo tamaño que el título
+                color: Colors.blue, // ✅ Color azul
+                fontWeight: FontWeight.normal,
               ),
             ),
-          ),
+          ],
         ],
       ),
       subtitle: Text(description, style: const TextStyle(fontSize: 12)),

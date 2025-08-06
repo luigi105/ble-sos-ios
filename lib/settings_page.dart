@@ -97,7 +97,7 @@ Widget build(BuildContext context) {
     resizeToAvoidBottomInset: true,
     appBar: AppBar(
       title: Text(
-        Platform.isIOS ? "🍎 Configuración iOS" : "🤖 Configuración",
+        Platform.isIOS ? "Configuración iOS" : "🤖 Configuración",
         style: const TextStyle(color: Colors.white),
       ),
       backgroundColor: Platform.isIOS ? Colors.blue : Colors.green,
@@ -158,7 +158,7 @@ Widget build(BuildContext context) {
                     color: Platform.isIOS ? Colors.blue : Colors.grey, 
                     width: 1,
                   ),
-                  backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
+                  backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 child: Text(
@@ -168,55 +168,6 @@ Widget build(BuildContext context) {
                   ),
                 ),
               ),
-            ),
-          ),
-          
-          _buildDivider(),
-          
-          // ✅ Información de plataforma
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Platform.isIOS ? Icons.phone_iphone : Icons.android,
-                  color: Platform.isIOS ? Colors.blue : Colors.green,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        Platform.isIOS ? "Configuración iOS" : "Configuración Android",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
-                        ),
-                      ),
-                      Text(
-                        Platform.isIOS 
-                          ? "Optimizado para eficiencia de batería y APIs nativas de Apple"
-                          : "Configuración completa con monitoreo continuo y control total",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Platform.isIOS ? Colors.blue.shade600 : Colors.green.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
           
@@ -467,7 +418,6 @@ Widget build(BuildContext context) {
                 ),
                 const SizedBox(height: 8),
                 if (Platform.isIOS) ...[
-                  const Text("• 🔋 Batería dura 2-3 días vs 8-12 horas"),
                   const Text("• 🔄 Reconexión BLE automática por Apple"),
                   const Text("• 📍 Ubicación solo en cambios significativos (>100m)"),
                   const Text("• 🚨 SOS garantizado 30 segundos de ejecución"),
@@ -504,7 +454,7 @@ Widget build(BuildContext context) {
                   color: Platform.isIOS ? Colors.blue : Colors.grey, 
                   width: 1,
                 ),
-                backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
+                backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               child: Text(
@@ -564,7 +514,7 @@ Widget build(BuildContext context) {
             color: Platform.isIOS ? Colors.blue : Colors.grey, 
             width: 1,
           ),
-          backgroundColor: Platform.isIOS ? Colors.blue.shade50 : Colors.white,
+          backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
         ),
         child: Text(
