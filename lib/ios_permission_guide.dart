@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
-import 'dart:async'; // ✅ AGREGAR esta línea
 
 class IOSPermissionGuidePage extends StatefulWidget {
   const IOSPermissionGuidePage({super.key});
@@ -261,86 +260,7 @@ Widget build(BuildContext context) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ CAMBIO: Mostrar encuadre apropiado según estado
-            if (!allPermissionsGranted) ...[
-              // Mostrar encuadre de permisos pendientes
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.warning,
-                      color: Colors.orange,
-                      size: 40,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Permisos pendientes",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "iOS necesita configuraciones específicas",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ] else ...[
-              // Mostrar encuadre de permisos completados
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 40,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "¡Permisos configurados correctamente!",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Tu app SOS funcionará de manera óptima",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            // ✅ ELIMINADO: Todo el encuadre de "Permisos pendientes" / "Permisos configurados"
             
             // Información específica iOS
             Container(
@@ -412,33 +332,7 @@ Widget build(BuildContext context) {
               ),
             ],
             
-            const SizedBox(height: 20),
-            
-            // ✅ CAMBIO: Botón dinámico según estado de permisos
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: allPermissionsGranted ? Colors.green : Colors.grey,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text(
-                  allPermissionsGranted ? "✅ Permisos Otorgados" : "Configurar más tarde", // ✅ CAMBIO: Texto dinámico
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            
-            if (!allPermissionsGranted) ...[
-              const SizedBox(height: 8),
-              Text(
-                "💡 iOS funciona mejor con todas las configuraciones",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-            ],
+            // ✅ ELIMINADO: Botón "Configurar más tarde" / "Permisos Otorgados" y texto adicional
             
             const SizedBox(height: 40),
           ],
@@ -511,9 +405,9 @@ Widget build(BuildContext context) {
             Text(
               extraText,
               style: const TextStyle(
-                fontSize: 14, // ✅ Mismo tamaño que el título
-                color: Colors.blue, // ✅ Color azul
-                fontWeight: FontWeight.normal,
+                fontSize: 14,
+                color: Colors.green, // ✅ CAMBIO: Verde en lugar de azul
+                fontWeight: FontWeight.bold, // ✅ CAMBIO: Bold agregado
               ),
             ),
           ],

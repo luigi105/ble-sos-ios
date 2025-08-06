@@ -91,8 +91,6 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
-
-
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -116,7 +114,7 @@ Widget build(BuildContext context) {
             style: TextStyle(
               fontSize: 18, 
               fontWeight: FontWeight.bold,
-              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+              color: Colors.green.shade700, // ✅ CAMBIO: Verde para todas las plataformas
             ),
           ),
           const SizedBox(height: 12),
@@ -221,7 +219,7 @@ Widget build(BuildContext context) {
             style: TextStyle(
               fontSize: 18, 
               fontWeight: FontWeight.bold,
-              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+              color: Colors.green.shade700, // ✅ CAMBIO: Verde para todas las plataformas
             ),
           ),
           const SizedBox(height: 8),
@@ -332,7 +330,7 @@ Widget build(BuildContext context) {
             style: TextStyle(
               fontSize: 18, 
               fontWeight: FontWeight.bold,
-              color: Platform.isIOS ? Colors.blue.shade700 : Colors.green.shade700,
+              color: Colors.green.shade700, // ✅ CAMBIO: Verde para todas las plataformas
             ),
           ),
           const SizedBox(height: 12),
@@ -554,7 +552,7 @@ Widget build(BuildContext context) {
         secondary: Icon(
           icon,
           color: value 
-            ? (Platform.isIOS ? Colors.blue : Colors.green)
+            ? Colors.green // ✅ CAMBIO: Verde para todas las plataformas
             : Colors.grey,
           size: 28,
         ),
