@@ -288,7 +288,7 @@ Future<void> _checkFirstInstallPermissions() async {
         // ✅ Esperar un poco para que la UI se estabilice
         await Future.delayed(Duration(seconds: 1));
         
-        if (_isMounted && navigatorKey.currentContext != null) {
+        if (navigatorKey.currentContext != null) {
           Navigator.push(
             navigatorKey.currentContext!,
             MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
@@ -717,22 +717,14 @@ Future<void> _initializeiOS() async {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
             
-            // ✅ VERIFICAR TODOS LOS PERMISOS NECESARIOS
+            // ✅ NUEVA LÓGICA: Solo navegación en primera instalación
+            await _checkFirstInstallPermissions();
+            
+            // ✅ Verificar permisos para auto-conexión (sin navegación)
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
             bool bluetoothGranted = await Permission.bluetooth.isGranted;
             bool notificationsGranted = await Permission.notification.isGranted;
             
-            print("🔍 Estado de permisos iOS:");
-            print("   📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
-            print("   🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
-            print("   🔔 Notificaciones: ${notificationsGranted ? '✅' : '❌'}");
-            
-            // ✅ SOLUCIÓN DEFINITIVA: NO NAVEGAR AUTOMÁTICAMENTE NUNCA
-            // Solo permitir navegación manual desde el botón "Permisos"
-            print("✅ Permisos verificados - NO navegación automática");
-            print("ℹ️ Usuario puede acceder a permisos desde Settings > Permisos");
-            
-            // ✅ NUEVO: Intentar conexión automática si todos los permisos están OK
             if (locationAlwaysGranted && bluetoothGranted && notificationsGranted) {
               print("✅ Todos los permisos iOS están configurados - Iniciando auto-conexión");
               _attemptAutoConnection();
@@ -917,7 +909,7 @@ Future<void> _attemptAutoConnection() async {
       }
       
       // Mostrar notificación de éxito (opcional)
-      if (_isMounted && navigatorKey.currentContext != null) {
+      if (navigatorKey.currentContext != null) {
         ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
           SnackBar(
             content: Text("🎉 Dispositivo Holy-IOT conectado automáticamente"),
@@ -1125,7 +1117,7 @@ Future<void> _initializeAndroid() async {
           
           if (!locationAlwaysGranted || !phoneGranted) {
             print("⚠️ Faltan permisos críticos, mostrando pantalla de configuración...");
-            if (_isMounted && navigatorKey.currentContext != null) {
+            if (navigatorKey.currentContext != null) {
               // ✅ NAVEGACIÓN CONDICIONAL CORREGIDA
               if (Platform.isIOS) {
                 Navigator.push(
@@ -1157,7 +1149,7 @@ Future<void> _initializeAndroid() async {
           
           if (!locationAlwaysGranted) {
             print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
-            if (_isMounted && navigatorKey.currentContext != null) {
+            if (navigatorKey.currentContext != null) {
               // ✅ NAVEGACIÓN CONDICIONAL CORREGIDA
               if (Platform.isIOS) {
                 Navigator.push(
