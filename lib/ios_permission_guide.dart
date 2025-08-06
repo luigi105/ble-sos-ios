@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import 'dart:async';
 
 class IOSPermissionGuidePage extends StatefulWidget {
   const IOSPermissionGuidePage({super.key});
