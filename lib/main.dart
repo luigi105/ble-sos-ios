@@ -666,47 +666,27 @@ Future<void> _initializeiOS() async {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
             
-            // ✅ CORRECCIÓN: VERIFICAR TODOS LOS PERMISOS NECESARIOS
+            // ✅ VERIFICAR TODOS LOS PERMISOS NECESARIOS
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
             bool bluetoothGranted = await Permission.bluetooth.isGranted;
             bool notificationsGranted = await Permission.notification.isGranted;
-            
-            // ✅ NUEVA LÓGICA: Solo navegar si REALMENTE faltan permisos críticos
-            bool hasAllCriticalPermissions = locationAlwaysGranted && bluetoothGranted && notificationsGranted;
             
             print("🔍 Estado de permisos iOS:");
             print("   📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
             print("   🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
             print("   🔔 Notificaciones: ${notificationsGranted ? '✅' : '❌'}");
-            print("   📊 Todos críticos otorgados: ${hasAllCriticalPermissions ? '✅' : '❌'}");
             
-            // ✅ CAMBIO CRÍTICO: Solo navegar si faltan permisos Y el usuario no ha visto la pantalla antes
-            if (!hasAllCriticalPermissions) {
-              print("⚠️ Faltan permisos críticos iOS, verificando si mostrar pantalla...");
-              
-              // ✅ VERIFICAR si es primera vez o si faltan permisos importantes
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              bool hasSeenPermissionPage = prefs.getBool('ios_permission_page_shown') ?? false;
-              
-              // Solo mostrar si es primera vez O si falta ubicación (crítico)
-              if (!hasSeenPermissionPage || !locationAlwaysGranted) {
-                print("📱 Mostrando pantalla de permisos iOS...");
-                await prefs.setBool('ios_permission_page_shown', true);
-                
-                if (_isMounted && navigatorKey.currentContext != null) {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                  );
-                }
-              } else {
-                print("✅ Usuario ya vio pantalla de permisos, no mostrar de nuevo");
-              }
-            } else {
-              print("✅ Todos los permisos iOS están configurados correctamente - NO mostrar pantalla");
-              
-              // ✅ NUEVO: Intentar conexión automática después de verificar permisos
+            // ✅ SOLUCIÓN DEFINITIVA: NO NAVEGAR AUTOMÁTICAMENTE NUNCA
+            // Solo permitir navegación manual desde el botón "Permisos"
+            print("✅ Permisos verificados - NO navegación automática");
+            print("ℹ️ Usuario puede acceder a permisos desde Settings > Permisos");
+            
+            // ✅ NUEVO: Intentar conexión automática si todos los permisos están OK
+            if (locationAlwaysGranted && bluetoothGranted && notificationsGranted) {
+              print("✅ Todos los permisos iOS están configurados - Iniciando auto-conexión");
               _attemptAutoConnection();
+            } else {
+              print("⚠️ Faltan algunos permisos - Conexión manual disponible");
             }
           });
           
@@ -718,7 +698,7 @@ Future<void> _initializeiOS() async {
         });
       });
     } else {
-      // ✅ MODO 2: Solo ubicación GPS (lógica similar)
+      // ✅ MODO 2: Solo ubicación GPS
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado para modo GPS");
         
@@ -726,28 +706,15 @@ Future<void> _initializeiOS() async {
           Future.delayed(Duration(seconds: 3), () async {
             await verifyPermissionsAfterStartup();
             
-            // ✅ CORRECCIÓN: Para modo GPS solo verificar ubicación
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
             
-            if (!locationAlwaysGranted) {
-              print("⚠️ Falta permiso de ubicación siempre...");
-              
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              bool hasSeenPermissionPage = prefs.getBool('ios_permission_page_shown') ?? false;
-              
-              if (!hasSeenPermissionPage) {
-                print("📱 Mostrando pantalla de permisos iOS (modo GPS)...");
-                await prefs.setBool('ios_permission_page_shown', true);
-                
-                if (_isMounted && navigatorKey.currentContext != null) {
-                  Navigator.push(
-                    navigatorKey.currentContext!,
-                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                  );
-                }
-              }
+            print("🔍 Estado de ubicación iOS (modo GPS): ${locationAlwaysGranted ? '✅' : '❌'}");
+            
+            // ✅ SOLUCIÓN: NO navegación automática, solo log
+            if (locationAlwaysGranted) {
+              print("✅ Permiso de ubicación iOS configurado correctamente para modo GPS");
             } else {
-              print("✅ Permiso de ubicación iOS configurado correctamente para modo GPS - NO mostrar pantalla");
+              print("⚠️ Falta permiso de ubicación - Usuario puede configurar desde Settings");
             }
           });
           
@@ -761,9 +728,9 @@ Future<void> _initializeiOS() async {
     }
   });
 
-  // ✅ RESTO DEL CÓDIGO SIN CAMBIOS...
   print("✅ iOS inicializado con IOSPlatformManager");
   
+  // ✅ RESTO DEL CÓDIGO EXISTENTE (timers, etc.) sin cambios
   Timer.periodic(const Duration(seconds: 10), (timer) async {
     if (_isMounted) {
       try {
@@ -2183,7 +2150,7 @@ Future<bool> startScanAndConnect() async {
           Platform.isIOS ? '🍎 BLE SOS App' : '🤖 BLE SOS App',
           style: const TextStyle(color: Colors.white),
         ),
-        backgroundColor: Platform.isIOS ? Colors.blue : Colors.green,
+        backgroundColor: Colors.green,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),

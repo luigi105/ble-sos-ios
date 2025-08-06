@@ -212,8 +212,8 @@ Widget build(BuildContext context) {
   
   return Scaffold(
     appBar: AppBar(
-      title: const Text("Permisos para App SOS", style: TextStyle(color: Colors.white)), // ✅ CAMBIO 1: Nuevo título
-      backgroundColor: Colors.blue,
+      title: const Text("Permisos para App SOS", style: TextStyle(color: Colors.white)),
+      backgroundColor: Colors.green, // ✅ CAMBIO: Verde consistente
       iconTheme: const IconThemeData(color: Colors.white),
     ),
     body: SafeArea(
@@ -222,8 +222,48 @@ Widget build(BuildContext context) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ CAMBIO: Solo mostrar encuadre de confirmación cuando todos los permisos están otorgados
-            if (allPermissionsGranted) ...[
+            // ✅ CAMBIO: Mostrar encuadre apropiado según estado
+            if (!allPermissionsGranted) ...[
+              // Mostrar encuadre de permisos pendientes
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.warning,
+                      color: Colors.orange,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Permisos pendientes",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "iOS necesita configuraciones específicas",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ] else ...[
+              // Mostrar encuadre de permisos completados
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -278,12 +318,14 @@ Widget build(BuildContext context) {
                     children: [
                       Icon(Icons.info, color: Colors.blue.shade700, size: 16),
                       const SizedBox(width: 6),
-                      Text(
-                        "Es de suma importancia activar todos los permisos para el buen funcionamiento de esta APP",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.blue.shade700,
+                      Expanded( // ✅ CAMBIO: Permitir que el texto se expanda
+                        child: Text(
+                          "Es de suma importancia activar todos los permisos para el buen funcionamiento de esta APP",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                       ),
                     ],
@@ -333,7 +375,7 @@ Widget build(BuildContext context) {
             
             const SizedBox(height: 20),
             
-            // Botón de continuar
+            // ✅ CAMBIO: Botón dinámico según estado de permisos
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -344,7 +386,7 @@ Widget build(BuildContext context) {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(
-                  allPermissionsGranted ? "✅ Continuar" : "Configurar más tarde",
+                  allPermissionsGranted ? "✅ Permisos Otorgados" : "Configurar más tarde", // ✅ CAMBIO: Texto dinámico
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -443,6 +485,9 @@ Widget build(BuildContext context) {
         ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
         : TextButton(
             onPressed: onTap,
+            style: TextButton.styleFrom(
+              side: const BorderSide(color: Colors.blue, width: 1), // ✅ CAMBIO: Borde azul
+            ),
             child: const Text("Configurar", style: TextStyle(fontSize: 12)),
           ),
     ),

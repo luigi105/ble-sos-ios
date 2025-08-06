@@ -110,8 +110,8 @@ class PermissionGuidePageState extends State<PermissionGuidePage> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Configuración de Permisos", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
+        title: const Text("Permisos del Sistema", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green, // ✅ CAMBIO: Verde consistente
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(

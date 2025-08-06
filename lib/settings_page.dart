@@ -100,7 +100,7 @@ Widget build(BuildContext context) {
         Platform.isIOS ? "Configuración iOS" : "🤖 Configuración",
         style: const TextStyle(color: Colors.white),
       ),
-      backgroundColor: Platform.isIOS ? Colors.blue : Colors.green,
+      backgroundColor: Colors.green, // ✅ CAMBIO: Verde consistente
       iconTheme: const IconThemeData(color: Colors.white),
     ),
     body: SingleChildScrollView(
