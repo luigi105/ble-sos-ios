@@ -569,32 +569,56 @@ Future<void> _runDiagnostic() async {
     await Future.delayed(Duration(seconds: 2));
     
     // 4. Mostrar resultado
-    if (success) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text("🎉 ¡ÉXITO!"),
-          content: Text("La función original funcionó correctamente.\n\nDispositivo conectado: ${BleData.isConnected}\nUUID: ${BleData.macAddress}"),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("¡Genial!"))],
-        ),
-      );
+      if (success) {
+        showDialog(
+          context: context,
+          barrierDismissible: false, // No se puede cerrar tocando fuera
+          builder: (context) => AlertDialog(
+            title: Text("🎉 ¡ÉXITO!"),
+            content: Text("Conexión establecida con botón SOS!"), // ✅ CAMBIO: Nuevo texto
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  side: const BorderSide(color: Colors.blue, width: 1), // ✅ CAMBIO: Borde azul
+                ),
+                child: Text("Cerrar"), // ✅ CAMBIO: Botón cerrar
+              ),
+            ],
+          ),
+        );
+      
+      // ✅ CAMBIO: Cerrar automáticamente después de 2 segundos
+      Future.delayed(Duration(seconds: 2), () {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+      });
       
       // Actualizar UI
       if (mounted) {
         setState(() {});
       }
       
-    } else {
-      // Si la función original también falla, el problema es más profundo
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text("⚠️ FUNCIÓN ORIGINAL TAMBIÉN FALLA"),
-          content: Text("Incluso la función original startScanAndConnect() que funcionaba antes ahora falla.\n\n¿Hiciste algún cambio en:\n- Info.plist\n- Permisos iOS\n- Configuración del proyecto?\n\nDispositivo conectado: ${BleData.isConnected}"),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("Revisar"))],
+} else {
+  // ✅ CAMBIO 3: Modal de fallo
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("⚠️ ERROR"),
+      content: Text("No se logró conectar al botón SOS. Por favor vuelva a intentar."), // ✅ CAMBIO: Nuevo texto
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            side: const BorderSide(color: Colors.blue, width: 1), // ✅ CAMBIO: Borde azul
+          ),
+          child: Text("Cerrar"),
         ),
-      );
-    }
+      ],
+    ),
+  );
+}
     
   } catch (e) {
     showDialog(
@@ -647,22 +671,36 @@ Future<void> _initializeiOS() async {
             bool bluetoothGranted = await Permission.bluetooth.isGranted;
             bool notificationsGranted = await Permission.notification.isGranted;
             
-            // ✅ NUEVA LÓGICA: Solo navegar si REALMENTE faltan permisos
-            bool allPermissionsGranted = locationAlwaysGranted && bluetoothGranted && notificationsGranted;
+            // ✅ NUEVA LÓGICA: Solo navegar si REALMENTE faltan permisos críticos
+            bool hasAllCriticalPermissions = locationAlwaysGranted && bluetoothGranted && notificationsGranted;
             
             print("🔍 Estado de permisos iOS:");
             print("   📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
             print("   🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
             print("   🔔 Notificaciones: ${notificationsGranted ? '✅' : '❌'}");
-            print("   📊 Todos otorgados: ${allPermissionsGranted ? '✅' : '❌'}");
+            print("   📊 Todos críticos otorgados: ${hasAllCriticalPermissions ? '✅' : '❌'}");
             
-            if (!allPermissionsGranted) {
-              print("⚠️ Faltan permisos críticos iOS, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                );
+            // ✅ CAMBIO CRÍTICO: Solo navegar si faltan permisos Y el usuario no ha visto la pantalla antes
+            if (!hasAllCriticalPermissions) {
+              print("⚠️ Faltan permisos críticos iOS, verificando si mostrar pantalla...");
+              
+              // ✅ VERIFICAR si es primera vez o si faltan permisos importantes
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              bool hasSeenPermissionPage = prefs.getBool('ios_permission_page_shown') ?? false;
+              
+              // Solo mostrar si es primera vez O si falta ubicación (crítico)
+              if (!hasSeenPermissionPage || !locationAlwaysGranted) {
+                print("📱 Mostrando pantalla de permisos iOS...");
+                await prefs.setBool('ios_permission_page_shown', true);
+                
+                if (_isMounted && navigatorKey.currentContext != null) {
+                  Navigator.push(
+                    navigatorKey.currentContext!,
+                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                  );
+                }
+              } else {
+                print("✅ Usuario ya vio pantalla de permisos, no mostrar de nuevo");
               }
             } else {
               print("✅ Todos los permisos iOS están configurados correctamente - NO mostrar pantalla");
@@ -680,7 +718,7 @@ Future<void> _initializeiOS() async {
         });
       });
     } else {
-      // ✅ MODO 2: Solo ubicación GPS
+      // ✅ MODO 2: Solo ubicación GPS (lógica similar)
       IOSPlatformManager.initialize().then((_) {
         print("✅ IOSPlatformManager inicializado para modo GPS");
         
@@ -692,12 +730,21 @@ Future<void> _initializeiOS() async {
             bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
             
             if (!locationAlwaysGranted) {
-              print("⚠️ Falta permiso de ubicación siempre, mostrando pantalla de configuración...");
-              if (_isMounted && navigatorKey.currentContext != null) {
-                Navigator.push(
-                  navigatorKey.currentContext!,
-                  MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
-                );
+              print("⚠️ Falta permiso de ubicación siempre...");
+              
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              bool hasSeenPermissionPage = prefs.getBool('ios_permission_page_shown') ?? false;
+              
+              if (!hasSeenPermissionPage) {
+                print("📱 Mostrando pantalla de permisos iOS (modo GPS)...");
+                await prefs.setBool('ios_permission_page_shown', true);
+                
+                if (_isMounted && navigatorKey.currentContext != null) {
+                  Navigator.push(
+                    navigatorKey.currentContext!,
+                    MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+                  );
+                }
               }
             } else {
               print("✅ Permiso de ubicación iOS configurado correctamente para modo GPS - NO mostrar pantalla");
@@ -714,9 +761,9 @@ Future<void> _initializeiOS() async {
     }
   });
 
+  // ✅ RESTO DEL CÓDIGO SIN CAMBIOS...
   print("✅ iOS inicializado con IOSPlatformManager");
   
-  // ✅ RESTO DEL CÓDIGO EXISTENTE (timers, etc.) sin cambios
   Timer.periodic(const Duration(seconds: 10), (timer) async {
     if (_isMounted) {
       try {
@@ -2330,24 +2377,25 @@ Future<bool> startScanAndConnect() async {
                 ),
 
                 if (Platform.isIOS && !BleData.isConnected) 
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await _runDiagnostic();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text(
-                          "🔧 DIAGNÓSTICO BLE",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await _runDiagnostic();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
+                        foregroundColor: Colors.blue,  // ✅ CAMBIO: Texto azul
+                        side: const BorderSide(color: Colors.blue, width: 2), // ✅ CAMBIO: Borde azul
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text(
+                        "Conectarse a Botón SOS", // ✅ CAMBIO: Nuevo texto
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
+                  ),
                 
                 if (!BleData.isConnected)
                   Container(
