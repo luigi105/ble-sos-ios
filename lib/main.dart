@@ -259,6 +259,57 @@ Future<void> verifyPermissionsAfterStartup() async {
   }
 }
 
+Future<void> _checkFirstInstallPermissions() async {
+  if (!Platform.isIOS) return;
+  
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isFirstRun = prefs.getBool('app_first_run_completed') ?? true; // Default true para no mostrar en actualizaciones
+    
+    // ✅ Solo verificar en primera instalación REAL
+    if (isFirstRun) {
+      print("🔍 Primera instalación detectada - Verificando permisos...");
+      
+      bool locationAlwaysGranted = await Permission.locationAlways.isGranted;
+      bool bluetoothGranted = await Permission.bluetooth.isGranted;
+      bool notificationsGranted = await Permission.notification.isGranted;
+      
+      bool allPermissionsGranted = locationAlwaysGranted && bluetoothGranted && notificationsGranted;
+      
+      print("🔍 Estado permisos primera instalación:");
+      print("   📍 Ubicación siempre: ${locationAlwaysGranted ? '✅' : '❌'}");
+      print("   🔵 Bluetooth: ${bluetoothGranted ? '✅' : '❌'}");
+      print("   🔔 Notificaciones: ${notificationsGranted ? '✅' : '❌'}");
+      
+      // ✅ Solo mostrar si realmente faltan permisos en primera instalación
+      if (!allPermissionsGranted) {
+        print("📱 Primera instalación sin permisos - Mostrando pantalla...");
+        
+        // ✅ Esperar un poco para que la UI se estabilice
+        await Future.delayed(Duration(seconds: 1));
+        
+        if (_isMounted && navigatorKey.currentContext != null) {
+          Navigator.push(
+            navigatorKey.currentContext!,
+            MaterialPageRoute(builder: (context) => const IOSPermissionGuidePage()),
+          );
+        }
+        
+        // ✅ Marcar que ya se mostró
+        await prefs.setBool('app_first_run_completed', false);
+      } else {
+        print("✅ Primera instalación con permisos completos - No mostrar pantalla");
+        await prefs.setBool('app_first_run_completed', false);
+      }
+    } else {
+      print("ℹ️ No es primera instalación - Usuario puede acceder manualmente desde Settings");
+    }
+    
+  } catch (e) {
+    print("❌ Error verificando primera instalación: $e");
+  }
+}
+
 // Función de optimizaciones de batería solo para Android
 Future<bool> requestBatteryOptimizationsIfNeeded() async {
   if (Platform.isIOS) {
@@ -2147,7 +2198,7 @@ Future<bool> startScanAndConnect() async {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          Platform.isIOS ? '🍎 BLE SOS App' : '🤖 BLE SOS App',
+          Platform.isIOS ? 'BLE SOS App' : 'BLE SOS App',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.green,
@@ -2353,8 +2404,8 @@ Future<bool> startScanAndConnect() async {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
-                        foregroundColor: Colors.blue,  // ✅ CAMBIO: Texto azul
-                        side: const BorderSide(color: Colors.blue, width: 2), // ✅ CAMBIO: Borde azul
+                        foregroundColor: Colors.black, // ✅ CAMBIO: Texto negro
+                        side: const BorderSide(color: Colors.green, width: 2), // ✅ CAMBIO: Borde verde
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text(

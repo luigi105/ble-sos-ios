@@ -91,6 +91,8 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
+
+
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -155,16 +157,16 @@ Widget build(BuildContext context) {
                 },
                 style: ElevatedButton.styleFrom(
                   side: BorderSide(
-                    color: Platform.isIOS ? Colors.blue : Colors.grey, 
+                    color: Colors.green, // ✅ CAMBIO: Borde verde
                     width: 1,
                   ),
-                  backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
+                  backgroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 child: Text(
-                  "Permisos", // ✅ CAMBIO: Nuevo texto del botón
+                  "Permisos",
                   style: TextStyle(
-                    color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
+                    color: Colors.black, // ✅ CAMBIO: Texto negro
                   ),
                 ),
               ),
@@ -229,13 +231,13 @@ Widget build(BuildContext context) {
             decoration: BoxDecoration(
               border: Border.all(
                 color: nuevoValorBoton == 1 
-                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  ? Colors.green // ✅ CAMBIO: Verde para todas las plataformas
                   : Colors.grey.shade300,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(8),
               color: nuevoValorBoton == 1 
-                ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
+                ? Colors.green.shade50 // ✅ CAMBIO: Verde suave para todas las plataformas
                 : Colors.white,
             ),
             child: RadioListTile<int>(
@@ -244,7 +246,7 @@ Widget build(BuildContext context) {
                   Icon(
                     Icons.bluetooth,
                     color: nuevoValorBoton == 1 
-                      ? (Platform.isIOS ? Colors.blue : Colors.green)
+                      ? Colors.green // ✅ CAMBIO: Verde para todas las plataformas
                       : Colors.grey,
                   ),
                   const SizedBox(width: 8),
@@ -267,7 +269,7 @@ Widget build(BuildContext context) {
                   nuevoValorBoton = value!;
                 });
               },
-              activeColor: Platform.isIOS ? Colors.blue : Colors.green,
+              activeColor: Colors.green, // ✅ CAMBIO: Verde para todas las plataformas
             ),
           ),
           
@@ -278,13 +280,13 @@ Widget build(BuildContext context) {
             decoration: BoxDecoration(
               border: Border.all(
                 color: nuevoValorBoton == 2 
-                  ? (Platform.isIOS ? Colors.blue : Colors.green)
+                  ? Colors.green // ✅ CAMBIO: Verde para todas las plataformas
                   : Colors.grey.shade300,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(8),
               color: nuevoValorBoton == 2 
-                ? (Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50)
+                ? Colors.green.shade50 // ✅ CAMBIO: Verde suave para todas las plataformas
                 : Colors.white,
             ),
             child: RadioListTile<int>(
@@ -293,7 +295,7 @@ Widget build(BuildContext context) {
                   Icon(
                     Icons.location_on,
                     color: nuevoValorBoton == 2 
-                      ? (Platform.isIOS ? Colors.blue : Colors.green)
+                      ? Colors.green // ✅ CAMBIO: Verde para todas las plataformas
                       : Colors.grey,
                   ),
                   const SizedBox(width: 8),
@@ -316,7 +318,7 @@ Widget build(BuildContext context) {
                   nuevoValorBoton = value!;
                 });
               },
-              activeColor: Platform.isIOS ? Colors.blue : Colors.green,
+              activeColor: Colors.green, // ✅ CAMBIO: Verde para todas las plataformas
             ),
           ),
           
@@ -390,10 +392,10 @@ Widget build(BuildContext context) {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Platform.isIOS ? Colors.blue.shade50 : Colors.green.shade50,
+              color: Colors.green.shade50, // ✅ CAMBIO: Verde suave para todas las plataformas
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
+                color: Colors.green.shade200, // ✅ CAMBIO: Verde para todas las plataformas
               ),
             ),
             child: Column(
@@ -451,16 +453,16 @@ Widget build(BuildContext context) {
               onPressed: _mostrarDialogoCambioImei,
               style: ElevatedButton.styleFrom(
                 side: BorderSide(
-                  color: Platform.isIOS ? Colors.blue : Colors.grey, 
+                  color: Colors.green, // ✅ CAMBIO: Borde verde
                   width: 1,
                 ),
-                backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
+                backgroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               child: Text(
                 "Cambiar IMEI",
                 style: TextStyle(
-                  color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
+                  color: Colors.black, // ✅ CAMBIO: Texto negro
                 ),
               ),
             ),
@@ -511,16 +513,16 @@ Widget build(BuildContext context) {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           side: BorderSide(
-            color: Platform.isIOS ? Colors.blue : Colors.grey, 
+            color: Colors.green, // ✅ CAMBIO: Borde verde
             width: 1,
           ),
-          backgroundColor: Colors.white, // ✅ CAMBIO: Fondo blanco
+          backgroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: Platform.isIOS ? Colors.blue.shade700 : Colors.black,
+            color: Colors.black, // ✅ CAMBIO: Texto negro
           ),
         ),
       ),
@@ -531,7 +533,7 @@ Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 18),
       height: 2,
-      color: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
+      color: Colors.green.shade200, // ✅ CAMBIO: Verde para todas las plataformas
       width: double.infinity,
     );
   }
@@ -566,8 +568,8 @@ Widget build(BuildContext context) {
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: Platform.isIOS ? Colors.blue : Colors.green,
-        activeTrackColor: Platform.isIOS ? Colors.blue.shade200 : Colors.green.shade200,
+        activeColor: Colors.green, // ✅ CAMBIO: Verde para todas las plataformas
+        activeTrackColor: Colors.green.shade200, // ✅ CAMBIO: Verde suave para todas las plataformas
       ),
     );
   }

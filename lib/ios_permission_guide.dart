@@ -19,16 +19,52 @@ class IOSPermissionGuidePageState extends State<IOSPermissionGuidePage> {
   void initState() {
     super.initState();
     checkPermissions();
+    
+    // ✅ AGREGAR: Verificar permisos periódicamente para updates en tiempo real
+    Timer.periodic(Duration(seconds: 2), (timer) {
+      if (mounted) {
+        checkPermissions();
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   Future<void> checkPermissions() async {
+    if (!mounted) return;
+    
     setState(() => isChecking = true);
     
-    locationAlwaysGranted = await Permission.locationAlways.isGranted;
-    bluetoothGranted = await Permission.bluetooth.isGranted;
-    notificationsGranted = await Permission.notification.isGranted;
+    try {
+      bool newLocationAlwaysGranted = await Permission.locationAlways.isGranted;
+      bool newBluetoothGranted = await Permission.bluetooth.isGranted;
+      bool newNotificationsGranted = await Permission.notification.isGranted;
+      
+      // ✅ Solo actualizar estado si hay cambios para evitar rebuilds innecesarios
+      if (newLocationAlwaysGranted != locationAlwaysGranted ||
+          newBluetoothGranted != bluetoothGranted ||
+          newNotificationsGranted != notificationsGranted) {
+        
+        print("🔄 Permisos actualizados:");
+        print("   📍 Ubicación: $locationAlwaysGranted → $newLocationAlwaysGranted");
+        print("   🔵 Bluetooth: $bluetoothGranted → $newBluetoothGranted");
+        print("   🔔 Notificaciones: $notificationsGranted → $newNotificationsGranted");
+        
+        if (mounted) {
+          setState(() {
+            locationAlwaysGranted = newLocationAlwaysGranted;
+            bluetoothGranted = newBluetoothGranted;
+            notificationsGranted = newNotificationsGranted;
+          });
+        }
+      }
+    } catch (e) {
+      print("❌ Error verificando permisos: $e");
+    }
     
-    setState(() => isChecking = false);
+    if (mounted) {
+      setState(() => isChecking = false);
+    }
   }
 
 Future<void> requestLocationAlways() async {
@@ -111,6 +147,8 @@ Future<void> requestLocationAlways() async {
       }
     }
     
+    // ✅ IMPORTANTE: Forzar actualización después de cambios
+    await Future.delayed(Duration(seconds: 1));
     await checkPermissions();
     
   } catch (e) {
@@ -307,24 +345,24 @@ Widget build(BuildContext context) {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: Colors.green.shade50, // ✅ CAMBIO: Verde suave
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: Colors.green.shade200), // ✅ CAMBIO: Borde verde
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info, color: Colors.blue.shade700, size: 16),
+                      Icon(Icons.info, color: Colors.green.shade700, size: 16), // ✅ CAMBIO: Verde
                       const SizedBox(width: 6),
-                      Expanded( // ✅ CAMBIO: Permitir que el texto se expanda
+                      Expanded(
                         child: Text(
                           "Es de suma importancia activar todos los permisos para el buen funcionamiento de esta APP",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.blue.shade700,
+                            color: Colors.green.shade700, // ✅ CAMBIO: Verde
                           ),
                         ),
                       ),
@@ -486,9 +524,12 @@ Widget build(BuildContext context) {
         : TextButton(
             onPressed: onTap,
             style: TextButton.styleFrom(
-              side: const BorderSide(color: Colors.blue, width: 1), // ✅ CAMBIO: Borde azul
+              side: const BorderSide(color: Colors.green, width: 1), // ✅ CAMBIO: Borde verde
             ),
-            child: const Text("Configurar", style: TextStyle(fontSize: 12)),
+            child: const Text(
+              "Configurar", 
+              style: TextStyle(fontSize: 12, color: Colors.black), // ✅ CAMBIO: Texto negro
+            ),
           ),
     ),
   );
