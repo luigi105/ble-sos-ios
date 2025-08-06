@@ -1547,7 +1547,7 @@ Future<void> _initializeAndroid() async {
     
     _heartbeatTimer?.cancel();
     
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 2), (timer) async {
       _heartbeatCount++;
       
       try {
@@ -1564,7 +1564,7 @@ Future<void> _initializeAndroid() async {
       }
     });
     
-    print("✅ Sistema HEARTBEAT configurado - Latido cada 30 segundos");
+    print("✅ Sistema HEARTBEAT configurado - Latido cada2 minutos");
   }
 
   Future<void> updateHeartbeatNotification() async {

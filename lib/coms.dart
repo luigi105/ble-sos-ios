@@ -44,7 +44,7 @@ class CommunicationService {
     }
   }
   
-  Future<http.Response> sendLocation(
+Future<http.Response> sendLocation(
   String imei,
   double latitude,
   double longitude,
@@ -70,6 +70,7 @@ class CommunicationService {
         'activo': activo,
         'battery_level': batteryLevel.toString(),
         'cell_online': cellOnline,
+        'apple': Platform.isIOS ? '1' : '0', // ✅ NUEVO CAMPO
       },
     );
 
@@ -79,13 +80,11 @@ class CommunicationService {
       print("❌ Error en el servidor: Código ${response.statusCode}");
     }
     
-    // Devolver la respuesta para que sendLocationOnce pueda verificarla
     return response;
     
   } catch (e) {
     print("⚠️ Error en la solicitud POST de ubicación: $e");
-    // Crear una respuesta de error para mantener la consistencia del tipo de retorno
-    throw e; // Re-lanzar la excepción para que sendLocationOnce la maneje
+    throw e;
   }
 }
 
