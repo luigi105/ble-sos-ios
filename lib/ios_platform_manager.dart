@@ -752,7 +752,7 @@ static Future<void> _checkAndForceReconnection() async {
     }
     
     // ✅ FORZAR ESCANEO RÁPIDO para encontrar dispositivo
-    print("💓 Iniciando escaneo de heartbeat...");
+    print("💡 Iniciando escaneo de heartbeat...");
     
     await FlutterBluePlus.stopScan();
     await FlutterBluePlus.startScan(timeout: Duration(seconds: 8));
@@ -762,8 +762,8 @@ static Future<void> _checkAndForceReconnection() async {
     
     await for (List<ScanResult> results in FlutterBluePlus.scanResults) {
       for (var result in results) {
-        if (result.device.platformName.toLowerCase() == "holy-iot") {
-          print("💓 Holy-IOT encontrado en heartbeat - conectando...");
+        if (result.device.platformName == BleData.bleDeviceName) {
+          print("💡 ${BleData.bleDeviceName} encontrado en heartbeat - conectando...");
           deviceFound = true;
           
           await FlutterBluePlus.stopScan();

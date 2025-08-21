@@ -70,7 +70,8 @@ void main() async {
   await BleData.loadAutoCall();
   await BleData.loadSosNotificationEnabled();
   await BleData.loadBleNotificationsEnabled();
-  await BleData.loadConnectionNotificationsEnabled(); 
+  await BleData.loadConnectionNotificationsEnabled();
+  await BleData.loadBleDeviceName(); 
   
   // ✅ SOLICITAR PERMISOS DESPUÉS DE CARGAR DATOS
   await requestPermissions();
@@ -813,8 +814,8 @@ Future<void> _initializeiOS() async {
         for (var device in devices) {
           print("🔍 iOS: Dispositivo: '${device.platformName}' (${device.remoteId})");
           
-          if (device.platformName.toLowerCase() == "holy-iot") {
-            print("📍 iOS: ¡Encontrado Holy-IOT! Ejecutando discoverServices...");
+          if (device.platformName == BleData.bleDeviceName) {
+            print("🔍 iOS: Encontrado ${BleData.bleDeviceName}! Ejecutando discoverServices...");
             deviceFound = true;
             
             if (mounted) {
@@ -831,8 +832,7 @@ Future<void> _initializeiOS() async {
         }
         
         if (!deviceFound) {
-          print("⚠️ iOS: No se encontró Holy-IOT en ${devices.length} dispositivos conectados");
-          if (mounted) {
+          print("⚠️ iOS: No se encontró ${BleData.bleDeviceName} en ${devices.length} dispositivos conectados");
             setState(() {
               _discoveryStatus = "Error: Holy-IOT no en ${devices.length} conectados";
             });
@@ -1653,7 +1653,7 @@ Future<bool> startScanAndConnect() async {
   }
 
   // ✅ ESTRATEGIA ESPECÍFICA POR PLATAFORMA
-  String targetDeviceName = "Holy-IOT";
+ String targetDeviceName = BleData.bleDeviceName;
   
   if (Platform.isIOS) {
     print("🍎 === ESCANEO iOS POR NOMBRE ===");
@@ -2593,9 +2593,7 @@ Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
         const SizedBox(height: 6),
         
         Text(
-          device != null && device.platformName.isNotEmpty
-              ? device.platformName
-              : 'Holy-IOT',
+          device.platformName.isNotEmpty ? device.platformName : BleData.bleDeviceName,
           style: const TextStyle(
             fontSize: 18.0,
             fontWeight: FontWeight.bold,

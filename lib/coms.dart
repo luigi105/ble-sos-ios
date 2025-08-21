@@ -113,6 +113,12 @@ Future<void> fetchMacAddress(String imei) async {
       if (data.containsKey('mac_address') && data['mac_address'] != null) {
         String mac = data['mac_address'].toString();
         if (mac.isNotEmpty && mac != "null") {
+
+            // ✅ NUEVO: Extraer nombre BLE (primeros 11 caracteres)
+            String bleDeviceName = mac.length >= 11 ? mac.substring(0, 11) : mac;
+            await BleData.setBleDeviceNamePersistent(bleDeviceName);
+            print("🏷️ Nombre BLE configurado: $bleDeviceName");
+
           if (Platform.isIOS) {
             // ✅ iOS: Guardar temporalmente, se actualizará al encontrar dispositivo
             BleData.setMacAddress("TEMP_$mac"); // Prefijo temporal

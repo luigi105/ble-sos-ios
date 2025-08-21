@@ -7,6 +7,7 @@ import 'ios_platform_manager.dart';
 
 class BleData {
   static String macAddress = "N/A";
+  static String bleDeviceName = "Holy-IOT";
   static String imei = "UNKNOWN_IMEI"; 
   static String sosNumber = "N/A";
   static int batteryLevel = 0;
@@ -800,7 +801,23 @@ static void debugConnectionState() {
 }
 
 
+static Future<void> setBleDeviceName(String name) async {
+  bleDeviceName = name;
+  print("📱 Nombre BLE actualizado: $bleDeviceName");
+}
 
+static Future<void> loadBleDeviceName() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  bleDeviceName = prefs.getString('bleDeviceName') ?? "Holy-IOT";
+  print("📱 Nombre BLE cargado: $bleDeviceName");
+}
+
+static Future<void> setBleDeviceNamePersistent(String name) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.setString('bleDeviceName', name);
+  bleDeviceName = name;
+  print("📱 Nombre BLE guardado persistentemente: $bleDeviceName");
+}
 
 
 }
