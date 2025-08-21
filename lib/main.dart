@@ -2593,7 +2593,7 @@ Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
         const SizedBox(height: 6),
         
         Text(
-          device.platformName.isNotEmpty ? device.platformName : BleData.bleDeviceName,
+          (device != null && device.platformName.isNotEmpty) ? device.platformName : BleData.bleDeviceName,
           style: const TextStyle(
             fontSize: 18.0,
             fontWeight: FontWeight.bold,
