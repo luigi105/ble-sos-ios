@@ -832,7 +832,8 @@ Future<void> _initializeiOS() async {
         }
         
         if (!deviceFound) {
-          print("⚠️ iOS: No se encontró ${BleData.bleDeviceName} en ${devices.length} dispositivos conectados");
+         print("⚠️ iOS: No se encontró ${BleData.bleDeviceName} en ${devices.length} dispositivos conectados");
+          if (mounted) {
             setState(() {
               _discoveryStatus = "Error: Holy-IOT no en ${devices.length} conectados";
             });
@@ -1653,7 +1654,7 @@ Future<bool> startScanAndConnect() async {
   }
 
   // ✅ ESTRATEGIA ESPECÍFICA POR PLATAFORMA
- String targetDeviceName = BleData.bleDeviceName;
+  String targetDeviceName = BleData.bleDeviceName;
   
   if (Platform.isIOS) {
     print("🍎 === ESCANEO iOS POR NOMBRE ===");
@@ -2593,7 +2594,7 @@ Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
         const SizedBox(height: 6),
         
         Text(
-          (device != null && device.platformName.isNotEmpty) ? device.platformName : BleData.bleDeviceName,
+         (device != null && device.platformName.isNotEmpty) ? device.platformName : BleData.bleDeviceName,
           style: const TextStyle(
             fontSize: 18.0,
             fontWeight: FontWeight.bold,
@@ -2694,9 +2695,7 @@ Widget _buildDeviceInfoTile(BluetoothDevice? device, String macAddress) {
                 const SizedBox(height: 4),
                 
                 Text(
-                  device != null && device.platformName.isNotEmpty
-                      ? device.platformName
-                      : 'Dispositivo BLE',
+                  (device != null && device.platformName.isNotEmpty) ? device.platformName : BleData.bleDeviceName,
                   style: const TextStyle(
                     fontSize: 14.0,
                     fontWeight: FontWeight.bold,
