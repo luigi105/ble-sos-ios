@@ -156,7 +156,7 @@ static Future<void> _setupSignificantLocationChanges() async {
       String eastWest = position.longitude >= 0 ? "East" : "West";
       String bleMacAddress = BleData.conBoton == 2 ? "N/A" : BleData.macAddress;
       String activo = BleData.conBoton == 2 ? "0" : (BleData.isConnected ? "1" : "0");
-      int batteryLevel = BleData.conBoton == 2 ? 0 : BleData.batteryLevel;
+      int batteryLevel = BleData.conBoton == 1 ? BleData.batteryLevel : 0;
       
       final response = await CommunicationService().sendLocation(
         BleData.imei,

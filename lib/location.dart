@@ -161,7 +161,7 @@ Future<bool> sendLocationOnce() async {
     String bleMacAddress = BleData.conBoton == 2 ? "N/A" : BleData.macAddress;
     String imei = BleData.imei;
     String activo = BleData.conBoton == 2 ? "0" : (BleData.isConnected ? "1" : "0");
-    int batteryLevel = BleData.conBoton == 2 ? 0 : BleData.batteryLevel;
+    int batteryLevel = BleData.conBoton == 1 ? BleData.batteryLevel : 0;
     String cellOnline = "1";
     
     print("📡 Datos preparados:");
